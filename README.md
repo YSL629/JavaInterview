@@ -134,6 +134,12 @@ DNS域名解析时间 = DNS交易时间
 
 (5 能促进标准化工作。因为每一层的功能及其所提供的服务都已有了精确的说明。标准化的好处就是可以随意替换其中的某几层，对于使用和科研来说十分方便。
 
+## 什么是TCP/IP协议
+
+TCP/IP协议不仅仅指的是[TCP](https://baike.baidu.com/item/TCP/33012) 和[IP](https://baike.baidu.com/item/IP/224599)两个协议，而是指一个由[FTP](https://baike.baidu.com/item/FTP/13839)、[SMTP](https://baike.baidu.com/item/SMTP/175887)、TCP、[UDP](https://baike.baidu.com/item/UDP/571511)、IP等协议构成的协议簇， 只是因为在TCP/IP协议中TCP协议和IP协议最具代表性，所以被称为TCP/IP协议。
+
+TCP/IP传输协议，即传输控制/网络协议，也叫作网络通讯协议。它是在网络的使用中的最基本的通信协议。TCP/IP传输协议对互联网中各部分进行通信的标准和方法进行了规定。并且，TCP/IP传输协议是保证网络数据信息及时、完整传输的两个重要的协议。TCP/IP传输协议是严格来说是一个四层的体系结构，应用层、传输层、网络层和数据链路层都包含其中
+
 
 
 ## TCP粘包
@@ -954,6 +960,10 @@ https://juejin.im/post/6844903801778864136
 
 配合`If-Match`或者`If-Non-Match`使用 对比资源的签名判断是否使用缓存 `ETag`也是首次请求的时候
 
+## HTTP 响应代码
+
+https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Status
+
 
 
 ## 为什么帧最小要64字节
@@ -1240,11 +1250,19 @@ https://www.cnblogs.com/Qian123/p/5345527.html
 
 转发是服务器行为，重定向是客户端行为。
 
+## NAT原理
+
+https://blog.csdn.net/hzhsan/article/details/45038265
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/20150414102442194)
+
 # Redis
 
 ## 数据结构
 
 9种数据结构及其适用场景，string-对象json，hash-对象，list-消息队列，set-共同爱好，zset-排行榜，bitmap-活跃用户在线状态，hyperloglog（基数统计）-月活，bloom filter-解决缓存穿透 
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/g6hBZ0jzZb0Zb0XiaaR6bGaN80wicXIIP74T85YN4xkMF6icjicicf0NCpGU4yia2VNK4YKSmLf7Viaj7ia64m4buiaGiajg/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
 
 ## 主从复制实现
 
@@ -1288,7 +1306,25 @@ https://www.cnblogs.com/Qian123/p/5345527.html
 
 CPU不是Redis的瓶颈。Redis的瓶颈最有可能是机器内存或者网络带宽，既然单线程容易实现，而且CPU不会成为瓶颈，那就顺理成章地采用单线程的方案了
 
+## 多线程时代
+
+https://mp.weixin.qq.com/s/ucJ8nVwnbWvMOg0hQIJlAg
+
+
+Redis6 版本中引入了多线程。上边已经提到过 Redis 单线程处理有着很快的速度，那为什么还要引入多线程呢？单线程的瓶颈在什么地方？
+
+我们先来看第二个问题，在 Redis 中，单线程的性能瓶颈主要在网络IO操作上。也就是在读写网络 read/write 系统调用执行期间会占用大部分 CPU 时间。如果你要对一些大的键值对进行删除操作的话，在短时间内是删不完的，那么对于单线程来说就会阻塞后边的操作。
+
+回想下上边讲得 Reactor 模式中单线程的处理方式。针对非连接事件，Reactor 会调用对应的 handler 完成 read->业务处理->write 处理流程，也就是说这一步会造成性能上的瓶颈。
+
+Redis 在设计上采用将网络数据读写和协议解析通过多线程的方式来处理，对于命令执行来说，仍然使用单线程操作。
+
+- 单线程性能瓶颈主要在网络IO上。
+- 将网络数据读写和协议解析通过多线程的方式来处理 ，对于命令执行来说，仍然使用单线程操作。
+
 ## Redis为什么这么快
+
+https://mp.weixin.qq.com/s/z0wH-eCp0zoVnj4tAnZPrw
 
 1、完全基于内存，绝大部分请求是纯粹的内存操作，非常快速。数据存在内存中，类似于HashMap，HashMap的优势就是查找和操作的时间复杂度都是O(1)；
 
@@ -1943,6 +1979,8 @@ https://mp.weixin.qq.com/s/oexktPKDULqcZQeplrFunQ
 - 由于同一进程的各线程间共享内存和文件资源，那么在线程之间数据传递的时候，就不需要经过内核了，这就使得线程之间的数据交互效率更高了；
 
 所以，线程比进程不管是时间效率，还是空间效率都要高。
+
+Linux 内核中，进程和线程都是用 `tark_struct` 结构体表示的，区别在于线程的 tark_struct 结构体里部分资源是共享了进程已创建的资源，比如内存地址空间、代码段、文件描述符等，所以 Linux 中的线程也被称为轻量级进程，因为线程的 tark_struct 相比进程的 tark_struct 承载的 资源比较少，因此以「轻」得名。
 
 ## 设置线程数
 
@@ -2744,6 +2782,45 @@ http://zyearn.com/blog/2015/03/22/what-happens-when-you-kill-a-process/
 
 执行`kill -9 <PID>`，进程是怎么知道自己被发送了一个信号的？首先要产生信号，执行kill程序需要一个pid，根据这个pid找到这个进程的task_struct（这个是Linux下表示进程/线程的结构），然后在这个结构体的特定的成员变量里记下这个信号。 这时候信号产生了但还没有被特定的进程处理，叫做Pending signal。 等到下一次CPU调度到这个进程的时候，内核会保证先执行`do\_signal`这个函数看看有没有需要被处理的信号，若有，则处理；若没有，那么就直接继续执行该进程。所以我们看到，在Linux下，信号并不像中断那样有异步行为，而是每次调度到这个进程都是检查一下有没有未处理的信号。
 
+## 总线嗅探
+
+https://mp.weixin.qq.com/s/PDUqwAIaUxNkbjvRfovaCg
+
+我还是以前面的 i 变量例子来说明总线嗅探的工作机制，当 A 号 CPU 核心修改了 L1 Cache 中 i 变量的值，通过总线把这个事件广播通知给其他所有的核心，然后每个 CPU 核心都会监听总线上的广播事件，并检查是否有相同的数据在自己的 L1 Cache 里面，如果 B 号 CPU 核心的 L1 Cache 中有该数据，那么也需要把该数据更新到自己的 L1 Cache。
+
+可以发现，总线嗅探方法很简单， CPU 需要每时每刻监听总线上的一切活动，但是不管别的核心的 Cache 是否缓存相同的数据，都需要发出一个广播事件，这无疑会加重总线的负载。
+
+另外，总线嗅探只是保证了某个 CPU 核心的 Cache 更新数据这个事件能被其他 CPU 核心知道，但是并不能保证事务串形化。
+
+
+
+要想实现缓存一致性，关键是要满足 2 点：
+
+- 第一点是写传播，也就是当某个 CPU 核心发生写入操作时，需要把该事件广播通知给其他核心；
+- 第二点是事物的串行化，这个很重要，只有保证了这个，次啊能保障我们的数据是真正一致的，我们的程序在各个不同的核心上运行的结果也是一致的；
+
+基于总线嗅探机制的 MESI 协议，就满足上面了这两点，因此它是保障缓存一致性的协议。
+
+MESI 协议，是已修改、独占、共享、已实现这四个状态的英文缩写的组合。整个 MSI 状态的变更，则是根据来自本地 CPU 核心的请求，或者来自其他 CPU 核心通过总线传输过来的请求，从而构成一个流动的状态机。另外，对于在「已修改」或者「独占」状态的 Cache Line，修改更新其数据不需要发送广播给其他 CPU 核心。
+
+## cup怎么调度任务
+
+
+
+https://mp.weixin.qq.com/s/djRd9g00vvIpSr6O07OOpA![img](https://mmbiz.qpic.cn/mmbiz_png/J0g14CUwaZdrBIMQROWxSKCX3uKvOOFzmIhAR0wXxtiaSNic4jbiaQrnKmNBoyvWicylGN2Asic5OoNNXWtdh3vGTRg/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+每个 CPU 都有自己的**运行队列（\*Run Queue, rq\*）**，用于描述在此 CPU 上所运行的所有进程，其队列包含三个运行队列，Deadline 运行队列 dl_rq、实时任务运行队列 rt_rq 和 CFS 运行队列 csf_rq，其中 csf_rq 是用红黑树来描述的，按 vruntime 大小来排序的，最左侧的叶子节点，就是下次会被调度的任务。
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/J0g14CUwaZdrBIMQROWxSKCX3uKvOOFzYliaCulaiaG76RovkcadLOt9RSOnwbgnrnPq9c1F7DGIJbxyc3VTr9YA/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+### nice值
+
+nice 值并不是表示优先级，而是表示优先级的修正数值，它与优先级（priority）的关系是这样的：priority(new) = priority(old) + nice。内核中，priority 的范围是 0~139，值越低，优先级越高，其中前面的 0~99 范围是提供给实时任务使用的，而 nice 值是映射到 100~139，这个范围是提供给普通任务用的，因此 nice 值调整的是普通任务的优先级。
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/J0g14CUwaZdrBIMQROWxSKCX3uKvOOFzJF4jc0KXY6yELkleteo1gPyo1ZUTLndb0ptiaIH8wzpB9WibdnWicmAuw/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+在前面我们提到了，权重值与 nice 值的关系的，nice 值越低，权重值就越大，计算出来的 vruntime 就会越少，由于 CFS 算法调度的时候，就会优先选择 vruntime 少的任务进行执行，所以 nice 值越低，任务的优先级就越高。
+
 # 设计模式
 
 ## 单例模式
@@ -3136,6 +3213,14 @@ https://crossoverjie.top/2018/07/23/java-senior/ConcurrentHashMap/
 
 https://blog.csdn.net/littlehaes/article/details/105241194
 
+#### 为什么不安全
+
+put的时候导致的多线程数据不一致。
+
+另外一个比较明显的线程不安全的问题是HashMap的get操作可能因为resize而引起死循环（cpu100%）
+
+快速失败
+
 ### ConcurrentHashMap
 
 **put**
@@ -3165,6 +3250,103 @@ https://www.jianshu.com/p/487d00afe6ca
 
 4此时线程2访问到了ForwardingNode节点，如果线程2执行的put或remove等写操作，那么就会先帮其扩容。如果线程2执行的是get等读方法，则会调用ForwardingNode的find方法，去nextTable里面查找相关元素。
 
+#### **ConcurrentHashMap死循环 bug
+
+https://mp.weixin.qq.com/s?__biz=MzIxNTQ4MzE1NA==&mid=2247488952&idx=1&sn=476afdef79c09c46f5f582d2ecad4fa0&scene=19#wechat_redirect
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHe6LxHx6tISPpQmeiaOOBicjcPAZv2ic5KAZAps5WNYbbTibicahG6icIVrw1NupoKrohlw0iboWFBJBBibkw/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+“AaAa” 和 “BBBB” 经过 spread 计算（右移 16 位高效计算）后的 h 值是 2031775 呢。
+
+先是 “AaAa” 进入 computeIfAbsent 方法：
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHdO5vFGibdfZKibncBWDHfEIkrk3y3HPprVrylntjIVOqCX8ULBPSp1ic1Rk7b4ImLzOD9l8jJ16DGzg/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+在第一次循环的时候 initTable，没啥说的。
+
+第二次循环先是在 1653 行计算出数组的下标，并取出该下标的 node。发现这个 node 是空的。于是进入分支判断：
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHdO5vFGibdfZKibncBWDHfEIksIbKQ2xVxJOgNOFjibVROSyyjCZgB8cZic6YuYNy2bVNaYlQbKb1NbRQ/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+在标号为 ① 的地方进行 cas 操作，先用 r（即 ReservationNode）进行一个占位的操作。
+
+在标号为 ② 的地方进行 mappingFunction.apply 的操作，计算 value 值。如果计算出来不为 null，则把 value 组装成最终的 node。
+
+在标号为 ③ 的东西把之前占位的 ReservationNode 替换成标号为 ② 的地方组装成的node 。
+
+问题就出现标号为 ② 的地方。可以看到这里去进行了 mappingFunction.apply 的操作，而这个操作在我们的案例下，会触发另一次 computeIfAbsent 操作。
+
+
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHdO5vFGibdfZKibncBWDHfEIkicAoCEibC6icgCyQtCNFD9US09mHQVLdRfnsapN1kDxT6xbhpjh0ED81g/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+
+
+进入无限循环内：
+
+①.经过 “AaAa” 之后，tab 就不为 null 了。
+
+②.当前的槽中已经被 “AaAa” **先放了一个 ReservationNode 进行占位了，所以不为 null。**
+
+③.当前的 map 并没有进行扩容操作。
+
+④.包含⑤、⑥、⑦、⑧。
+
+⑤.tabAt 方法取出来的对象，就是之前 “AaAa” 放进去的占位的 ReservationNode，所以满足条件进入分支。
+
+⑥.判断当前是否是链表存储，不满足条件，跳过。
+
+⑦.判断当前是否是红黑树存储，不满足条件，跳过。
+
+⑧.判断当前下标里面是否放了 node，不满足条件（“AaAa” 只有个占位的Node ，并没有初始完成，所以还没有放到该下标里面），进入下一次循环。
+
+解决
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHdO5vFGibdfZKibncBWDHfEIk9gydM2JtmuGfxweqcoYVgKPFs1z3Q20YsvKElaK5vL2UDu4o0PHHYQ/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+就加了两行代码，**判断完是否是红黑树节点后，再判断一下是否是 ReservationNode 节点，因为这个节点就是个占位节点。如果是，则抛出异常。**
+
+
+
+
+
+#### **ConcurrentHashMap为什么不能存值为null的value？**
+
+https://mp.weixin.qq.com/s?__biz=MzIxNTQ4MzE1NA==&mid=2247484354&idx=1&sn=80c92881b47a586eba9c633eb78d36f6&chksm=9796d5bfa0e15ca9713ff9dc6e100593e0ef06ed7ea2f60cb984e492c4ed438d2405fbb2c4ff&scene=21#wechat_redirect
+
+**1.这个key从来没有在map中映射过。**
+
+**2.这个key的value在设置的时候，就是null。**
+
+
+
+在非线程安全的map集合(HashMap)中可以使用map.contains(key)方法来判断，而ConcurrentHashMap却不可以。
+
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHf2bfvuqhNOD41noNhSlbWJTxEcaeic0IKupSR9aERndCzez9RmgeOibm94qJD2CiaDqgTSg3LYwiaVDQ/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+输出的结果为：
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHf2bfvuqhNOD41noNhSlbWJdJzEJKjCSG7SmwP2B3nRUa42wyOAuq4Kib9ialWwiaIPCdlNHIjcCDTHw/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+
+
+在上面的实例中，由于是单线程，当我们得到的value是null的时候，我可以用hashMap.containsKey(key)方法来区分上面说的两重含义。
+
+按照上面的程序，第一次判断可以知道这个key从来没有在map中映射过。第二次判断可以知道这个key的value在设置的时候，就是null。
+
+**所以当map.get(key)返回的值是null，在HashMap中虽然存在二义性，但是结合containsKey方法可以避免二义性。**
+
+如果是ConcurrentHashMap呢?它的使用场景是多线程的情况下。我们还是用**反证法**来推理，假设concurrentHashMap允许存放值为null的value。
+
+这时有A、B两个线程。
+
+线程A调用concurrentHashMap.get(key)方法,返回为null，我们还是不知道这个null是没有映射的null还是存的值就是null。
+
+我们假设此时返回为null的真实情况就是因为这个key没有在map里面映射过。那么我们可以用concurrentHashMap.containsKey(key)来验证我们的假设是否成立，我们期望的结果是返回false。
+
+但是在我们调用concurrentHashMap.get(key)方法之后，containsKey方法之前，有一个线程B执行了concurrentHashMap.put(key,null)的操作。那么我们调用containsKey方法返回的就是true了。这就与我们的假设的真实情况不符合了
+
 ###  CountDownLatch，CyclicBarrier，Semaphore 
 
 https://mp.weixin.qq.com/s/TDw7GnzDw5FK3RWwkIzzZA
@@ -3181,6 +3363,31 @@ https://blog.csdn.net/chenchaofuck1/article/details/51660119
 
 - 支持阻塞的插入方法：当队列满时，队列会阻塞插入元素的线程，直到队列不满。
 - 支持阻塞的移除方法：当队列为空时，获取元素的线程会等待队列变为非空。
+
+### LinkedBlockingQueue和ArrayBlockingQueue
+
+https://blog.csdn.net/javazejian/article/details/77410889
+
+1.队列大小有所不同，ArrayBlockingQueue是有界的初始化必须指定大小，而LinkedBlockingQueue可以是有界的也可以是无界的(Integer.MAX_VALUE)，对于后者而言，当添加速度大于移除速度时，在无界的情况下，可能会造成内存溢出等问题。
+
+2.数据存储容器不同，ArrayBlockingQueue采用的是数组作为数据存储容器，而LinkedBlockingQueue采用的则是以Node节点作为连接对象的链表。
+
+3.由于ArrayBlockingQueue采用的是数组的存储容器，因此在插入或删除元素时不会产生或销毁任何额外的对象实例，而LinkedBlockingQueue则会生成一个额外的Node对象。这可能在长时间内需要高效并发地处理大批量数据的时，对于GC可能存在较大影响。
+
+4.两者的实现队列添加或移除的锁不一样，ArrayBlockingQueue实现的队列中的锁是没有分离的，即添加操作和移除操作采用的同一个ReenterLock锁，而LinkedBlockingQueue实现的队列中的锁是分离的，其添加采用的是putLock，移除采用的则是takeLock，这样能大大提高队列的吞吐量，也意味着在高并发的情况下生产者和消费者可以并行地操作队列中的数据，以此来提高整个队列的并发性能。
+
+
+
+ArrayBlockingQueue在生产者放入数据和消费者获取数据，都是共用同一个锁对象，由此也意味着两者无法真正并行运行，这点尤其不同于LinkedBlockingQueue；
+
+按照实现原理来分析，ArrayBlockingQueue完全可以采用分离锁，从而实现生产者和消费者操作的完全并行运行。之所以没这样去做，猜测是因为ArrayBlockingQueue的数据写入和获取操作已经足够轻巧，以至于引入独立的锁机制，除了给代码带来额外的复杂性外，其在性能上完全占不到任何便宜。 ArrayBlockingQueue和LinkedBlockingQueue间还有一个明显的不同之处在于，前者在插入或删除元素时不会产生或销毁任何额外的对象实例，而后者则会生成一个额外的Node对象。这在长时间内需要高效并发地处理大批量数据的系统中，其对于GC的影响还是存在一定的区别。而在创建ArrayBlockingQueue时，我们还可以控制对象的内部锁是否采用公平锁，默认采用非公平锁
+
+
+
+作者：wuxinliulei
+链接：https://www.zhihu.com/question/41941103/answer/158132078
+来源：知乎
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 
 
 
@@ -3315,17 +3522,64 @@ https://www.bbsmax.com/A/A2dmM7lbde/
 
 ## AQS
 
-AQS，全称：AbstractQueuedSynchronizer，是JDK提供的一个同步框架，内部维护着FIFO双向队列，即CLH同步队列。
+https://mp.weixin.qq.com/s/y_e3ciU-hiqlb5vseuOFyw
 
-AQS依赖它来完成同步状态的管理（voliate修饰的state，用于标志是否持有锁）。如果获取同步状态state失败时，会将当前线程及等待信息等构建成一个Node，将Node放到FIFO队列里，同时阻塞当前线程，当线程将同步状态state释放时，会把FIFO队列中的首节的唤醒，使其获取同步状态state。
-很多JUC包下的锁都是基于AQS实现的
+AQS 全称是 AbstractQueuedSynchronizer，是一个用来构建**锁**和**同步器**的框架，它维护了一个共享资源 state 和一个 FIFO 的等待队列（即上文中管程的入口等待队列），底层利用了 CAS 机制来保证操作的原子性。
 
-在AQS中维护着一个FIFO的同步队列，当线程获取同步状态失败后，则会加入到这个CLH同步队列的对尾并一直保持着自旋。在CLH同步队列中的线程在自旋时会判断其前驱节点是否为首节点，如果为首节点则不断尝试获取同步状态，获取成功则退出CLH同步队列。当线程执行完逻辑后，会释放同步状态，释放后会唤醒其后继节点。 
+**AQS 实现锁的主要原理如下：**
 
-共享式同步状态过程
-共享式与独占式的最主要区别在于同一时刻独占式只能有一个线程获取同步状态，而共享式在同一时刻可以有多个线程获取同步状态。例如读操作可以有多个线程同时进行，而写操作同一时刻只能有一个线程进行写操作，其他操作都会被阻塞。 
+![img](https://mmbiz.qpic.cn/mmbiz_jpg/OyweysCSeLUw3oEcJTUMphCBvlHmY65EaNibqm2VepgYQCicnCf3ibjdLUNjxNg3Z7YmWPMYC16ZqmwvT72DQ0FqA/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
 
-![image-20200628100203990](README.assets/image-20200628100203990.png)
+以实现独占锁为例（即当前资源只能被一个线程占有），其实现原理如下：state 初始化 0，在多线程条件下，线程要执行临界区的代码，必须首先获取 state，某个线程获取成功之后， state 加 1，其他线程再获取的话由于共享资源已被占用，所以会到 FIFO 等待队列去等待，等占有 state 的线程执行完临界区的代码释放资源( state 减 1)后，会唤醒 FIFO 中的下一个等待线程（head 中的下一个结点）去获取 state。
+
+state 由于是多线程共享变量，所以必须定义成 volatile，以保证 state 的可见性, 同时虽然 volatile 能保证可见性，但不能保证原子性，所以 AQS 提供了对 state 的原子操作方法，保证了线程安全。
+
+另外 AQS 中实现的 FIFO 队列（CLH 队列）其实是双向链表实现的，由 head, tail 节点表示，head 结点代表当前占用的线程，其他节点由于暂时获取不到锁所以依次排队等待锁释放。
+
+### 获取锁
+
+1. state 为 0 时，代表锁已经被释放，可以去获取，于是使用 CAS 去重新获取锁资源，如果获取成功，则代表竞争锁成功，使用 setExclusiveOwnerThread(current) 记录下此时占有锁的线程，看到这里的 CAS，大家应该不难理解为啥当前实现是非公平锁了，因为队列中的线程与新线程都可以 CAS 获取锁啊，新来的线程不需要排队
+2. 如果 state 不为 0，代表之前已有线程占有了锁，如果此时的线程依然是之前占有锁的线程（current == getExclusiveOwnerThread() 为 true），代表此线程再一次占有了锁（可重入锁），此时更新 state，记录下锁被占有的次数（锁的重入次数）,这里的 setState 方法不需要使用 CAS 更新，因为此时的锁就是当前线程占有的，其他线程没有机会进入这段代码执行。所以此时更新 state 是线程安全的。
+
+假设当前 state = 0，即锁不被占用，现在有 T1, T2, T3 这三个线程要去竞争锁![img](https://mmbiz.qpic.cn/mmbiz_png/OyweysCSeLUw3oEcJTUMphCBvlHmY65Eor2ISwEGoI8p40Qg4TPzIeEXDlDtbNWvmCO8icRLCI5SulZM29ibhsxg/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+假设现在 T1 获取锁成功，则两种情况分别为 1、 T1 首次获取锁成功![img](https://mmbiz.qpic.cn/mmbiz_png/OyweysCSeLUw3oEcJTUMphCBvlHmY65Ef3RIrSwiaYovPyweueb76npJk1xK5ZQIzlaS8SNofqtnTCBfg1tLFVg/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+2、 T1 再次获取锁成功，state 再加 1，表示锁被重入了两次，当前如果 T1一直申请占用锁成功，state 会一直累加
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/OyweysCSeLUw3oEcJTUMphCBvlHmY65EFHKY35wwqOFA50I4pZ5UyfX3EJHXn1kt3r22QOr2te9z9vcdMaFlZw/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+### 入队
+
+1、假设 T1 获取锁成功，由于此时 FIFO 未初始化，所以先创建 head 结点
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/OyweysCSeLUw3oEcJTUMphCBvlHmY65Ef6JUydgQsMkomPrk4ULFN6wt8MZQjDiaQicViaSiauLsruYcB553aYzfiag/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+2、此时 T2 或 T3 再去竞争 state 失败，入队，如下图:
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/OyweysCSeLUw3oEcJTUMphCBvlHmY65EuWuwtS2jaRq6ibpnxDtO0Va2GbMzKibUUiaGJ7QLjEb8icfVuk2sg5PJ5Q/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+好了，现在问题来了， T2，T3 入队后怎么处理，是马上阻塞吗，马上阻塞意味着线程从运行态转为阻塞态 ，涉及到用户态向内核态的切换，而且唤醒后也要从内核态转为用户态，开销相对比较大，所以 AQS 对这种入队的线程采用的方式是让它们自旋来竞争锁，如下图示
+
+![img](https://mmbiz.qpic.cn/mmbiz_jpg/OyweysCSeLUw3oEcJTUMphCBvlHmY65E0hHA345YT1CKQAOgH3gLpyE3DQZN1Q9g1nTmD8VoFmPmibrSRVkOfgg/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+### 释放锁
+
+唤醒之后 head 之后节点，让它来竞争锁
+
+第一个非取消状态的节点为啥要从后往前找因为节点入队并不是原子操作，如下![img](https://mmbiz.qpic.cn/mmbiz_jpg/OyweysCSeLUw3oEcJTUMphCBvlHmY65ERl0DcSqaSBO4q385LG60fUvLYwiaDXicibLvMrlf2qriaNaicmrS9uBFGEw/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+线程自旋时时是先执行 node.pre = pred, 然后再执行 pred.next = node，如果 unparkSuccessor 刚好在这两者之间执行，此时是找不到  head 的后继节点的，如下
+
+![img](https://mmbiz.qpic.cn/mmbiz_jpg/OyweysCSeLUw3oEcJTUMphCBvlHmY65EroXWuLAtAY3ia9xtJLpxJhqibssnIrwmef093ECF51YzzxDz53vehK7A/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+
+
+
+
+
+
+
 
 
 
@@ -3571,7 +3825,7 @@ https://www.jianshu.com/p/e62fa839aa41
 
 > **轻量级锁所适应的场景是线程交替执行同步块的情况，如果存在同一时间访问同一锁的情况，必然就会导致轻量级锁膨胀为重量级锁**。
 
-## 重量级锁
+## 重量级锁 Synchronized
 
 Synchronized是通过对象内部的一个叫做 **监视器锁（Monitor）来实现的**。**但是监视器锁本质又是依赖于底层的操作系统的Mutex Lock来实现的。而操作系统实现线程之间的切换这就需要从用户态转换到核心态，这个成本非常高，状态之间的转换需要相对比较长的时间**，这就是为什么Synchronized效率低的原因。因此，这种依赖于操作系统Mutex Lock所实现的锁我们称之为 **“重量级锁”**。
 
@@ -3585,6 +3839,10 @@ mutex互斥锁一句话：保护共享资源。
 链接：https://www.jianshu.com/p/e62fa839aa41
 来源：简书
 著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+
+![image-20201108152336401](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201108152336401.png)
+
+可以看到 synchronized 锁也是基于管程实现的，只不过它只有且只有一个条件变量（就是锁对象本身）而已，这也是为什么JDK 要实现 Lock 锁的原因之一，Lock 支持多个条件变量。
 
 
 
@@ -3728,6 +3986,10 @@ https://www.zhihu.com/question/20794107
 
 ![img](https://gitee.com/xurunxuan/picgo/raw/master/img/v2-6aacbe1e9df4fe982a68fe142401952e_720w.jpg)
 
+### 动手模拟JDK动态代理
+
+https://mp.weixin.qq.com/s/TLhuQ6Eiqk5Js8NlRbaOZw
+
 ## 泛型缺点
 
 简单说就是擦除后，重载问题
@@ -3777,6 +4039,169 @@ public void fun1(List<String> list){
    }
 
 这个时候编译器又报错了，为啥呢？还是泛型擦除，当运行的时候会导致，参数都变成List  list，那么这两个方法都变成一个了。
+
+## String对象频繁的修改，会有什么问题，如何改进
+
+https://juejin.im/post/6844903951351939086#comment
+
+转成StringBuffer、StringBuilder
+
+巧妙的使用 intern() 方法
+
+## 并发标记
+
+https://segmentfault.com/a/1190000021820577
+
+什么是"三色标记"？《深入理解Java虚拟机(第三版)》中是这样描述的：
+
+在遍历对象图的过程中，把访问都的对象**按照"是否访问过"这个条件**标记成以下三种颜色：
+
+**白色：表示对象尚未被垃圾回收器访问过**。显然，在可达性分析刚刚开始的阶段，所有的对象都是白色的，若在分析结束的阶段，仍然是白色的对象，即代表不可达。
+
+**黑色：表示对象已经被垃圾回收器访问过，且这个对象的所有引用都已经扫描过**。黑色的对象代表已经扫描过，它是安全存活的，如果有其它的对象引用指向了黑色对象，无须重新扫描一遍。黑色对象不可能直接（不经过灰色对象）指向某个白色对象。
+
+**灰色：表示对象已经被垃圾回收器访问过，但这个对象至少存在一个引用还没有被扫描过**。
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/1460000021820594)
+
+怎么解决"对象消失"问题呢？
+
+条件一：赋值器插入了一条或者多条从黑色对象到白色对象的新引用。
+
+条件二：赋值器删除了全部从灰色对象到该白色对象的直接或间接引用。
+
+你在结合我们上面出现过的图捋一捋上面的这两个条件，是不是当且仅当的关系：
+
+黑色对象5到白色对象9之间的引用是新建的，对应条件一。
+
+黑色对象6到白色对象9之间的引用被删除了，对应条件二。
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/1460000021820598)
+
+**CMS是基于增量更新来做并发标记的，G1则采用的是原始快照的方式。**
+
+增量更新
+
+黑色对象一旦插入了指向白色对象的引用之后，它就变回了灰色对象。
+
+原始快照
+
+无论引用关系删除与否，都会按照刚刚开始扫描那一刻的对象图快照开进行搜索。
+
+## G1收集器原理
+
+https://segmentfault.com/a/1190000021878102
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/1460000021878115)
+
+h表示大对象
+
+G1的堆内存被划分为多个大小相等的 Region ，但是 Region 的总个数在 2048 个左右，默认是 2048 。对于一个 Region 来说，是逻辑连续的一段空间，其大小的取值范围是 1MB 到 32MB 之间。
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/1460000021878130)
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/1460000021878134)
+
+## 常量池
+
+https://mp.weixin.qq.com/s/Av2phrOe_TXnRwD0SeYPCg
+
+![image-20201107112058414](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201107112058414.png)
+
+class常量池
+
+- 类和接口的全限定名
+- 字段的名称和描述符
+- 方法的名称和描述符
+
+**运行时常量池就是用来存放 class 常量池中的内容的**
+
+1. 字符串常量池本质就是一个哈希表
+2. 字符串常量池中存储的是字符串实例的引用
+3. 字符串常量池在被整个 JVM 共享
+4. 在解析运行时常量池中的符号引用时，会去查询字符串常量池，确保运行时常量池中解析后的直接引用跟字符串常量池中的引用是一致的
+
+## 垃圾回收，解决引用计数的缺点
+
+![](https://gitee.com/xurunxuan/picgo/raw/master/img/v2-d7314ead6b303f08a91687577c045585_720w.jpg)
+
+link1,link2,link3组成了一个引用环，同时link1还被一个变量A(其实这里称为名称A更好)引用。link4自引用，也构成了一个引用环。从图中我们还可以看到，每一个节点除了有一个记录当前引用计数的变量ref_count还有一个gc_ref变量，这个gc_ref是ref_count的一个副本，所以初始值为ref_count的大小。
+
+
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/v2-d7314ead6b303f08a91687577c045585_720w.jpg)
+
+
+
+gc启动的时候，会逐个遍历”Object to Scan”链表中的容器对象，并且将当前对象所引用的所有对象的gc_ref减一。(扫描到link1的时候，由于link1引用了link2,所以会将link2的gc_ref减一，接着扫描link2,由于link2引用了link3,所以会将link3的gc_ref减一…..)像这样将”Objects to Scan”链表中的所有对象考察一遍之后，两个链表中的对象的ref_count和gc_ref的情况如下图所示。这一步操作就相当于解除了循环引用对引用计数的影响。
+
+
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/v2-d7314ead6b303f08a91687577c045585_720w.jpg)
+
+
+
+接着，gc会再次扫描所有的容器对象，如果对象的gc_ref值为0，那么这个对象就被标记为GC_TENTATIVELY_UNREACHABLE，并且被移至”Unreachable”链表中。下图中的link3和link4就是这样一种情况。
+
+
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/v2-d7314ead6b303f08a91687577c045585_720w.jpg)
+
+
+
+如果对象的gc_ref不为0，那么这个对象就会被标记为GC_REACHABLE。同时当gc发现有一个节点是可达的，那么他会递归式的将从该节点出发可以到达的所有节点标记为GC_REACHABLE,这就是下图中link2和link3所碰到的情形。
+
+
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/v2-d7314ead6b303f08a91687577c045585_720w.jpg)
+
+
+
+除了将所有可达节点标记为GC_REACHABLE之外，如果该节点当前在”Unreachable”链表中的话，还需要将其移回到”Object to Scan”链表中，下图就是link3移回之后的情形。
+
+
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/v2-d7314ead6b303f08a91687577c045585_720w.jpg)
+
+
+
+第二次遍历的所有对象都遍历完成之后，存在于”Unreachable”链表中的对象就是真正需要被释放的对象。如上图所示，此时link4存在于Unreachable链表中，gc随即释放之。
+
+## 保守和非保守GC
+
+https://zuozuo.gitbooks.io/reading-notes-of-garbage-collection/content/chapter6_bao_shou_shi_gc.html
+
+**保守式GC(Conservative GC)指的是: 不能识别指针和非指针的GC**
+
+**准确式GC(Exact GC)能够正确识别出指针和非指针** 	
+
+相信大家看下来已经知道准确意味 JVM 需要清晰的知晓对象的类型，包括在栈上的引用也能得知类型等。
+
+能想到的可以在指针上打标记，来表明类型，或者在外部记录类型信息形成一张映射表。
+
+HotSpot 用的就是映射表，这个表叫 OopMap。
+
+在 HotSpot 中，对象的类型信息里会记录自己的 OopMap，记录了在该类型的对象内什么偏移量上是什么类型的数据，而在解释器中执行的方法可以通过解释器里的功能自动生成出 OopMap 出来给 GC 用。
+
+被 JIT 编译过的方法，也会在特定的位置生成 OopMap，记录了执行到该方法的某条指令时栈上和寄存器里哪些位置是引用。
+
+这些特定的位置主要在：
+
+1. 循环的末尾（非 counted 循环）
+2. 方法临返回前 / 调用方法的call指令后
+3. 可能抛异常的位置
+
+这些位置就叫作安全点(safepoint)。
+
+那为什么要选择这些位置插入呢？因为如果对每条指令都记录一个 OopMap 的话空间开销就过大了，因此就选择这些个关键位置来记录即可。
+
+所以在 HotSpot 中 GC 不是在任何位置都能进入的，只能在安全点进入。
+
+至此我们知晓了可以在类加载时计算得到对象类型中的 OopMap，解释器生成的 OopMap 和 JIT 生成的 OopMap ，所以 GC 的时候已经有充足的条件来准确判断对象类型。
+
+因此称为准确式 GC。
+
+https://mp.weixin.qq.com/s/AZ_Xv28cF1xxloluJaniww
 
 # Mysql
 
@@ -4368,6 +4793,22 @@ https://www.cnblogs.com/micrari/p/7112781.html
 预编译语句的优势在于归纳为：**一次编译、多次运行，省去了解析优化等过程；此外预编译语句能防止sql注入。**
 当然就优化来说，很多时候最优的执行计划不是光靠知道sql语句的模板就能决定了，往往就是需要通过具体值来预估出成本代价。
 
+## 单机数据库qps
+
+这个数据跟硬件配置有关也跟所做操作和服务配置有关：
+
+如果单指查询，那么同环境下有索引的查询一定比没索引的查询并发量小；
+
+如果单指写入，那么同环境下有索引或者触发器的写入一定会比没有这些的并发量小；
+
+网上有业内人士**说并发量在500-1000**，后面我想做一次测试看看到底是什么数据。
+
+## 为什么innodb要有主键
+
+innodb是用聚集索引，所以非聚集索引最后怎么定位到数据就需要靠主键
+
+myisam是非聚集索引，不需要主键定位数据
+
 # Spring
 
 ## 控制反转
@@ -4517,7 +4958,36 @@ https://blog.csdn.net/u014745069/article/details/83820511?utm_medium=distribute.
 
 Spring Boot启动的时候会通过@EnableAutoConfiguration注解找到META-INF/spring.factories配置文件中的所有自动配置类，并对其进行加载，而这些自动配置类都是以AutoConfiguration结尾来命名的，它实际上就是一个JavaConfig形式的Spring容器配置类，它能通过以Properties结尾命名的类中取得在全局配置文件中配置的属性如：server.port，而XxxxProperties类是通过@ConfigurationProperties注解与全局配置文件中对应的属性进行绑定的。
 
+## 三种注入方式
 
+![image-20201103164059922](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201103164059922.png)
+
+![image-20201103164128492](C:/Users/xu/AppData/Roaming/Typora/typora-user-images/image-20201103164128492.png)
+
+## 循环依赖
+
+什么情况下循环依赖可以被处理？
+
+1. 出现循环依赖的Bean必须要是单例
+2. 依赖注入的方式不能全是构造器注入的方式（很多博客上说，只能解决setter方法的循环依赖，这是错误的）
+
+答：Spring通过三级缓存解决了循环依赖，其中一级缓存为单例池（`singletonObjects`）,二级缓存为早期曝光对象`earlySingletonObjects`，三级缓存为早期曝光对象工厂（`singletonFactories`）。
+
+当A、B两个类发生循环引用时，在A完成实例化后，就使用实例化后的对象去创建一个对象工厂，并添加到三级缓存中，如果A被AOP代理，那么通过这个工厂获取到的就是A代理后的对象，如果A没有被AOP代理，那么这个工厂获取到的就是A实例化的对象。
+
+当A进行属性注入时，会去创建B，同时B又依赖了A，所以创建B的同时又会去调用getBean(a)来获取需要的依赖，此时的getBean(a)会从缓存中获取：
+
+第一步，先获取到三级缓存中的工厂；
+
+第二步，调用对象工工厂的getObject方法来获取到对应的对象，得到这个对象后将其注入到B中。紧接着B会走完它的生命周期流程，包括初始化、后置处理器等。
+
+当B创建完后，会将B再注入到A中，此时A再完成它的整个生命周期。至此，循环依赖结束！
+
+面试官：”为什么要使用三级缓存呢？二级缓存能解决循环依赖吗？“
+
+答：如果要使用二级缓存解决循环依赖，意味着所有Bean在实例化后就要完成AOP代理，这样违背了Spring设计的原则，Spring在设计之初就是通过`AnnotationAwareAspectJAutoProxyCreator`这个后置处理器来在Bean生命周期的最后一步来完成AOP代理，而不是在实例化后就立马进行AOP代理。
+
+![image-20201104093606297](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201104093606297.png)
 
 # 算法
 
@@ -5584,7 +6054,41 @@ public class BitMap {
 
 # 分布式
 
+## 理解分布式
+
+分布式系统还是建立在「**分治**」和「**冗余**」的基础上，这也就是分布式系统的本质
+
+> 那么分治是什么？
+
+这和我们大脑解决问题类似，大问题分解为小问题，然后治理最后归并。
+
+![分治](https://mmbiz.qpic.cn/mmbiz_png/J0g14CUwaZdrBIMQROWxSKCX3uKvOOFzDUYaDWp21NEO79GcM2fyZD5JC8R8Qd9AXeV3B3MsicEYRsPRjayp0sQ/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)分治
+
+> 为什么要这样做？
+
+小问题容易解决，解决了众多的子问题，大问题也就更容易解决了
+
+> 如果拆分的父子问题有依赖关系怎么办？
+
+大问题拆分的过程中，非常重要的即不同分支的子问题不能相互依赖，需要各自独立，因为如果存在依赖关系，父子问题就失去了「归并」的意义，那么在开发中，这就是「**聚合度**」和「**内聚度**」的问题。
+
+> 什么是聚合度和内聚度？
+
+所谓聚合度即软件系统中各个模块的相互依赖程度。比如在调用A方法的时候都需要**同步**调用方法B，显然这样的耦合度就高
+
+所谓内聚度即模块之间具有共同点的相似程度，所以在拆分的时候要尤其注意这两点。
+
+> 什么是冗余？
+
+这里的冗余不是代码的冗余，而是容许系统在一定范围内出现故障，但对系统的影响很小。
+
+![冗余](https://mmbiz.qpic.cn/mmbiz_png/J0g14CUwaZdrBIMQROWxSKCX3uKvOOFzNcciajJ28RGurDqUyC5Ovzicw7m0QSHFLibice5TlSxP7pZe4OEUCchPrw/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)冗余
+
+如上图将冗余的节点部署在单独的服务器，完全是为了备用而做的冗余，如果不出现故障，那么资源是不是就浪费了，所以大多数情况会使用诸如双主多活、读写分离之类的概念提高资源利用率
+
 ## 分布式事务
+
+https://mp.weixin.qq.com/s/qeUfEJFYCfyDjgzDnq_Jdw
 
 https://juejin.im/post/6844903647197806605#comment
 
@@ -5597,6 +6101,14 @@ https://www.jianshu.com/p/e4b662407c66
 3PC 相对于 2PC 做了一定的改进：引入了参与者超时机制，并且增加了预提交阶段使得故障恢复之后协调者的决策复杂度降低，但整体的交互过程更长了，性能有所下降，并且还是会存在数据不一致问题。
 
 所以 2PC 和 3PC 都不能保证数据100%一致，因此一般都需要有定时扫描补偿机制。
+
+- Prepare()：TM 调用该接口询问各个本地事务是否就绪
+- Commit()：TM 调用该接口要求各个本地事务提交
+- Rollback()：TM 调用该接口要求各个本地事务回滚
+
+可以将这三个接口简单地（但不严谨地）理解成 XA 协议。XA 协议是 X/Open 提出的分布式事务处理标准。MySQL、Oracle、DB2 这些主流数据库都实现了 XA 协议，因此都能被用于实现 2PC 事务模型。
+
+`TCC`（Try-Confirm-Cancel）又被称`补偿事务`，`TCC`与`2PC`的思想很相似，事务处理流程也很相似，但`2PC` 是应用于在DB层面，TCC则可以理解为在应用层面的`2PC`，是需要我们编写业务逻辑来实现。
 
 ## Raft
 
@@ -5860,13 +6372,7 @@ https://blog.csdn.net/qq_34337272/article/details/104047453
 
 
 
-### 微服务
 
-spring cloud 常见面试题 来理解微服务（通俗易懂）
-
-https://blog.csdn.net/qq_35906921/article/details/84032874
-
-微服务架构是—种架构模式或者说是一种架构风格,它提倡将单一应用程序划分成-一组小的服务,每个服务运行在其独立的自己的进程中,服务之间互相协调、互相配合,为用户提供最终价值。服务之间采用轻量级的通信机制互相沟通(通常是基于HTTP的REST ful API)。毎个服务都围绕着貝体业务进行构建,并且能够被独立地部罟到生产环境、类生产环境等另外,应尽量避免统一的、集中式的服务管理机制,对具体的_个服务而言,应根据业务上下文,选择合适的语言、工具对其进行构建,可以有一个非常轻量级的集中式管理来协调这些服务,可以使用不同的语言来编写服务,也可以使用不同的数据存储。 
 
 ## 雪花算法时间回拨问题
 
@@ -5913,6 +6419,14 @@ https://segmentfault.com/a/1190000015967922
 令牌桶算法的原理是系统以恒定的速率产生令牌，然后把令牌放到令牌桶中，令牌桶有一个容量，当令牌桶满了的时候，再向其中放令牌，那么多余的令牌会被丢弃；当想要处理一个请求的时候，需要从令牌桶中取出一个令牌，如果此时令牌桶中没有令牌，那么则拒绝该请求。
 
 ![img](https://gitee.com/xurunxuan/picgo/raw/master/img/1460000015967925)
+
+## 微服务
+
+spring cloud 常见面试题 来理解微服务（通俗易懂）
+
+https://blog.csdn.net/qq_35906921/article/details/84032874
+
+微服务架构是—种架构模式或者说是一种架构风格,它提倡将单一应用程序划分成-一组小的服务,每个服务运行在其独立的自己的进程中,服务之间互相协调、互相配合,为用户提供最终价值。服务之间采用轻量级的通信机制互相沟通(通常是基于HTTP的REST ful API)。毎个服务都围绕着貝体业务进行构建,并且能够被独立地部罟到生产环境、类生产环境等另外,应尽量避免统一的、集中式的服务管理机制,对具体的_个服务而言,应根据业务上下文,选择合适的语言、工具对其进行构建,可以有一个非常轻量级的集中式管理来协调这些服务,可以使用不同的语言来编写服务,也可以使用不同的数据存储。 
 
 # 项目
 
