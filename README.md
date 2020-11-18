@@ -205,6 +205,8 @@ https://www.jianshu.com/p/65605622234b
 
 ![img](面试总结.assets/944365-895493e20637d2b0.png)
 
+![image-20201116101602825](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201116101602825.png)
+
 ![img](面试总结.assets/944365-d148731fa16316be.png)
 
 ![img](面试总结.assets/944365-6162a7db50ebb9d3.png)
@@ -626,6 +628,12 @@ net.ipv4.tcp_tw_reuse = 1
 
 > 既然TIME_WAIT不是为了阻止新连接，那么只要能证明自己确实属于新连接而不是老连接的残留数据，那么该连接即使匹配到了TIME_WAIT的四元组也是可以接受的，即可以重用TIME_WAIT的连接。如何来保证呢？很简单，只需要把老的数据丢在窗口外即可。为此，只要新连接的初始序列号比老连接的FIN包末尾序列号大，那么老连接的所有数据即使迟到也会落在窗口之外，从而不会破坏新建连接！ 即使不使用序列号，还是可以使用时间戳，因为TCP/IP规范规定IP地址要是唯一的，根据这个唯一性，欲重用TIME_WAIT连接的新连接的必然发自同一台机器，而机器时间是单调递增不能倒流的，因此只要新连接带有时间戳且其值比老连接FIN时的时间戳大，就认为该新连接是可以接受的，时间戳重用TW连接的机制的前提是IP地址唯一性导出的发起自同一台机器，那么不满足该前提的则不能基于此来重用TIME_WAIT连接，因此NAT环境不能这么做遍成了自然而然的结论。
 
+**坏处**
+
+这个配置，依赖于连接双方对timestamps的支持。同时，这个配置，主要影响到了inbound的连接（对outbound的连接也有影响，但是不是复用），即做为服务端角色，客户端连进来，服务端主动关闭了连接，TIME_WAIT状态的socket处于服务端，服务端快速的回收该状态的连接。
+
+由此，如果客户端处于NAT的网络(多个客户端，同一个IP出口的网络环境)，如果配置了tw_recycle，就可能在一个RTO的时间内，只能有一个客户端和自己连接成功(不同的客户端发包的时间不一致，造成服务端直接把数据包丢弃掉)。
+
 所以我给出的建议是**服务端不要主动关闭，把主动关闭方放到客户端**。毕竟咱们服务器是一对很多很多服务，我们的资源比较宝贵。
 
 ### SYN Cookies
@@ -687,6 +695,10 @@ Server进程所在的主机宕机
 > 之后如果接收数据，则Windows下会报10053的错误，而Linux下则收到正常关闭消息
 >
 > TCP连接的本端接收缓冲区中还有未接收数据的情况下close了Socket，则本端TCP会向对端发送RST包，而不是正常的FIN包，这就会导致对端进程提前（RST包比正常数据包先被收到）收到“10054: An existing connection was forcibly closed by the remote host”（Windows下）或“104: Connection reset by peer”（Linux下）错误
+
+## **IP头结构的定义**
+
+![image-20201110152558769](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201110152558769.png)
 
 ## http的理解
 
@@ -987,6 +999,22 @@ https://developer.aliyun.com/article/222535
 太大会一直占用发送端口，导致其他数据不能及时发送
 
 又因为最小的64字节，数据链路层占用18字节，所以Ip层是64-1500字节
+
+### 为什么要规定ip帧的大小
+
+因为 I P层本身没有超时重传的机制——由更高层来
+负责超时和重传（T C P有超时和重传机制，但U D P没有。一些U D P应用程序本身也执行超时和
+重传）。当来自T C P报文段的某一片丢失后，T C P在超时后会重发整个T C P报文段，该报文段对
+应于一份I P数据报。没有办法只重传数据报中的一个数据报片。**事实上，如果对数据报分片的**
+**是中间路由器，而不是起始端系统，那么起始端系统就无法知道数据报是如何被分片的。就这**
+**个原因，经常要避免分片，不然我不知道重传哪个**
+
+![image-20201114205429899](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201114205429899.png)
+
+### 确定MTU大小
+
+要做的是发送分组，并设置“不分片”标志比特。发送的
+第一个分组的长度正好与出口 M T U相等，每次收到I C M P“不能分片”差错时就减小分组的长度。
 
 ## 正向代理和反向代理的区别
 
@@ -1338,6 +1366,10 @@ https://mp.weixin.qq.com/s/z0wH-eCp0zoVnj4tAnZPrw
 
 Reactor模式
 
+管道
+
+Redis序列化协议
+
 5、使用底层模型不同，它们之间底层实现方式以及与客户端之间通信的应用协议不一样，Redis直接自己构建了VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求；
 
 ## 缓存一致性
@@ -1460,6 +1492,40 @@ redis是基于内存的单线程，在操作不当的情况（比如删除大key
 
 4.默认值
 没有数据返回默认值
+
+## 定时扫描策略
+
+1从过期字典抽取20个key
+
+2.删除当中过期的
+
+3.如果过期的key超过1/4，那么重复执行1
+
+循环不能超过25ms
+
+所以最好不要在同一时间过期，不然每次都会等25ms
+
+## 淘汰策略
+
+1.不继续服务写请求（默认）
+
+2.设置了过期时间的，最少使用淘汰
+
+3.设置了过期时间的，剩余寿命最小淘汰
+
+4.设置了过期时间的，随机淘汰
+
+5.全体key随机淘汰
+
+6.全体key，最少使用淘汰
+
+## 多线程的情况
+
+1.删除大key，主线程unlike 然后后台线程异步删除
+
+2.aof
+
+
 
 # MyBatis
 
@@ -2782,6 +2848,10 @@ http://zyearn.com/blog/2015/03/22/what-happens-when-you-kill-a-process/
 
 执行`kill -9 <PID>`，进程是怎么知道自己被发送了一个信号的？首先要产生信号，执行kill程序需要一个pid，根据这个pid找到这个进程的task_struct（这个是Linux下表示进程/线程的结构），然后在这个结构体的特定的成员变量里记下这个信号。 这时候信号产生了但还没有被特定的进程处理，叫做Pending signal。 等到下一次CPU调度到这个进程的时候，内核会保证先执行`do\_signal`这个函数看看有没有需要被处理的信号，若有，则处理；若没有，那么就直接继续执行该进程。所以我们看到，在Linux下，信号并不像中断那样有异步行为，而是每次调度到这个进程都是检查一下有没有未处理的信号。
 
+kill -15 
+
+大部分程序接收到SIGTERM信号后，会先释放自己的资源，然后再停止。但是也有程序可能接收信号后，做一些其他的事情（如果程序正在等待IO，可能就不会立马做出响应，我在使用wkhtmltopdf转pdf的项目中遇到这现象），也就是说，SIGTERM多半是会被阻塞的。
+
 ## 总线嗅探
 
 https://mp.weixin.qq.com/s/PDUqwAIaUxNkbjvRfovaCg
@@ -2820,6 +2890,19 @@ nice 值并不是表示优先级，而是表示优先级的修正数值，它与
 ![img](https://mmbiz.qpic.cn/mmbiz_png/J0g14CUwaZdrBIMQROWxSKCX3uKvOOFzJF4jc0KXY6yELkleteo1gPyo1ZUTLndb0ptiaIH8wzpB9WibdnWicmAuw/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
 
 在前面我们提到了，权重值与 nice 值的关系的，nice 值越低，权重值就越大，计算出来的 vruntime 就会越少，由于 CFS 算法调度的时候，就会优先选择 vruntime 少的任务进行执行，所以 nice 值越低，任务的优先级就越高。
+
+## 进程控制块
+
+![进程控制块（PCB）](http://c.biancheng.net/uploads/allimg/181101/2-1Q1011J630138.gif)
+每个进程控制块如图 1 所示，它包含许多与当前进程相关的信息：
+
+- 进程状态：状态可以包括新的、就绪、运行、等待、停止等。
+- 程序计数器：计数器表示进程将要执行的下个指令的地址。
+- CPU 寄存器：根据计算机体系结构的不同，寄存器的类型和数量也会不同。它们包括累加器、索引寄存器、堆栈指针、通用寄存器和其他条件码信息寄存器。在发生中断时，这些状态信息与程序计数器一起需要保存，以便进程以后能正确地继续执行。
+- CPU 调度信息：这类信息包括进程优先级、调度队列的指针和其他调度参数。
+- 内存管理信息：根据操作系统使用的内存系统，这类信息可以包括基地址和界限寄存器的值、页表或段表。
+- 记账信息：这类信息包括 CPU 时间、实际使用时间、时间期限、记账数据、作业或进程数量等。
+- I/O 状态信息：这类信息包括分配给进程的 I/O 设备列表、打开文件列表等。
 
 # 设计模式
 
@@ -3050,6 +3133,88 @@ https://developer.aliyun.com/article/726412
 简单总结一下就是，一个程序执行的时候，CPU 会根据程序计数器里的内存地址，从内存里面把需要执行的指令读取到指令寄存器里面执行，然后根据指令长度自增，开始顺序读取下一条指令。
 
 CPU 从程序计数器读取指令、到执行、再到下一条指令，这个过程会不断循环，直到程序执行结束，这个不断循环的过程被称为 **CPU 的指令周期**。
+
+## 编译原理
+
+https://mp.weixin.qq.com/s/s8iBXcLFfk5PjLKh66XluA
+
+**提取出每一个单词：词法分析**
+
+首先编译器要把源代码中的每个“单词”提取出来，在编译技术中“单词”被称为**token**。其实不只是每个单词被称为一个token，除去单词之外的比如左括号、右括号、赋值操作符等都被称为token。
+
+从源代码中提取出token的过程就被称为词法分析，Lexical Analysis。
+
+经过一遍词法分析，编译器得到了以下token：
+
+
+
+```
+T_While      whileT_LeftParen   （T_Identifier   yT_Less         <T_Identifier   zT_RightParen   )T_OpenBrace    {T_Int         intT_Identifier   xT_Assign       =T_Identifier   aT_Plus         +T_Identifier   bT_Semicolon    ;T_Identifier   yT_PlusAssign   +=T_Identifier   xT_Semicolon    ;T_CloseBrace   }
+```
+
+就这样一个磁盘中保存的字符串源代码文件就转换为了一个个的token。
+
+
+
+**这些token想表达什么意思：语法分析**
+
+有了这些token之后编译器就可以根据语言定义的语法恢复其原本的结构，怎么恢复呢？
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/8g3rwJPmya3Y4wSH9yqVudt26g1AXnliajyvbvp9bWbcibSdPt0wUq69JKY0rasUqp2P1YJVPOC9DYlJ50F4gaPA/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+原来，编译器在扫描出各个token后根据规则将其用树的形式表示出来，这颗树就被称为**语法树**。
+
+
+
+**语法树是不是合理的：语义分析**
+
+有了语法树后我们还要检查这棵树是不是合法的，比如我们不能把一个整数和一个字符串相加、比较符左右两边的数据类型要相同，等等。
+
+这一步通过后就证明了程序合法，不会有编译错误。
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/8g3rwJPmya3Y4wSH9yqVudt26g1AXnlia22KYmSzTkvxgGOdmNvmaicwVISmeO3xXMEHt2tCJNicIxibWgctYn9o9A/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+
+
+**根据语法树生成中间代码：代码生成**
+
+语义分析之后接下来编译器遍历语法树并用另一种形式来表示，用什么来表示呢？那就是中间代码，intermediate representation code，简称**IR code**。
+
+上述语法树可能就会表示为这样的中间代码：
+
+```
+Loop: x   = a + b      y   = x + y      _t1 = y < z      if _t1 goto Loop
+```
+
+怎么样，这实际上已经比较接近最后的机器指令了。
+
+只不过这还不是最终形态。
+
+
+
+**中间代码优化**
+
+在生成中间代码后要对其进行优化，我们可以看到，实际上可以把x = a + b这行代码放到循环外，因为每次循环都不会改变x的值，因此优化后就是这样了：
+
+
+
+```
+      x   = a + bLoop: y   = x + y      _t1 = y < z      if _t1 goto Loop
+```
+
+中间代码优化后就可以生成机器指令了。
+
+
+
+**代码生成**
+
+将上述优化后的中间代码转换为机器指令：
+
+
+
+```
+      add $1, $2, $3Loop: add $4, $1, $4      slt $6, $1, $5      beq $6, loop
+```
 
 # Java
 
@@ -3389,6 +3554,64 @@ ArrayBlockingQueue在生产者放入数据和消费者获取数据，都是共�
 来源：知乎
 著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 
+### ConcurrentLinkedQueue
+
+入队
+
+从源代码角度来看，整个入队过程主要做两件事情：第一是定位出尾节点；第二是使用 CAS算法将入队节点设置成尾节点的next节点，如不成功则重试。
+
+tail节点并不总是尾节点，所以每次入队都必须先通过tail节点来找到尾节点。尾节点可能 是tail节点，也可能是tail节点的next节点。代码中循环体中的第一个if就是判断tail是否有next节 点，有则表示next节点可能是尾节点。获取tail节点的next节点需要注意的是p节点等于p的next 节点的情况，只有一种可能就是p节点和p的next节点都等于空，表示这个队列刚初始化，正准 备添加节点，所以需要返回head节点。获取p节点的next节点代码如下。 
+
+final Node succ(Node p) { 
+
+Node next = p.getNext();
+
+ return (p == next) head : next; }
+
+让tail节点永远作为队列的尾节点，这样实现代码量非常少，而且逻辑清晰和易懂。但是， 这么做有个缺点，每次都需要使用循环CAS更新tail节点。如果能减少CAS更新tail节点的次 数，就能提高入队的效率，所以doug lea使用hops变量来控制并减少tail节点的更新频率，并不 是每次节点入队后都将tail节点更新成尾节点，而是当tail节点和尾节点的距离大于等于常量 HOPS的值（默认等于1）时才更新tail节点，tail和尾节点的距离越长，使用CAS更新tail节点的次 数就会越少，但是距离越长带来的负面效果就是每次入队时定位尾节点的时间就越长，因为 循环体需要多循环一次来定位出尾节点，但是这样仍然能提高入队的效率，因为从本质上来 看它通过增加对volatile变量的读操作来减少对volatile变量的写操作，而对volatile变量的写操 作开销要远远大于读操作，所以入队效率会有所提升。
+
+简单的说就是通过多读来少写
+
+出队列
+
+首先获取头节点的元素，然后判断头节点元素是否为空，如果为空，表示另外一个线程已 经进行了一次出队操作将该节点的元素取走，如果不为空，则使用CAS的方式将头节点的引 用设置成null，如果CAS成功，则直接返回头节点的元素，如果不成功，表示另外一个线程已经 进行了一次出队操作更新了head节点，导致元素发生了变化，需要重新获取头节点
+
+### 安全失败和快速失败
+
+https://mp.weixin.qq.com/s/z-BwnuN21RHgrpfyTy8LZA
+
+说到快速失败、失败安全时，我们首先想到的应该是这是一种机制、一种思想、一种模式，它属于**系统设计范畴**，其次才应该想到它的各种应用场景和具体实现。而不是立马想到了集合，这样就有点本末倒置的感觉了。
+
+简而言之：系统运行中，如果有错误发生，那么系统立即结束，这种设计就是快速失败。系统运行中，如果有错误发生，系统不会停止运行，它忽略错误（但是会有地方记录下来），继续运行，这种设计就是失败安全。
+
+Java集合-失败安全
+现象：采用失败安全机制的集合容器，在遍历时不是直接在集合内容上访问的，而是先复制原有集合内容，在拷贝的集合上进行遍历。
+
+原理：由于迭代时是对原集合的拷贝进行遍历，所以在遍历过程中对原集合所作的修改并不能被迭代器检测到，所以不会触发ConcurrentModificationException。
+
+缺点：基于拷贝内容的优点是避免了ConcurrentModificationException，但同样地，迭代器并不能访问到修改后的内容，即：迭代器遍历的是开始遍历那一刻拿到的集合拷贝，在遍历期间原集合发生的修改迭代器是不知道的。这也就是他的缺点，同时，由于是需要拷贝的，所以比较吃内存。
+
+场景：java.util.concurrent包下的容器都是安全失败，可以在多线程下并发使用，并发修改。
+
+Java集合-快速失败
+现象：在用迭代器遍历一个集合对象时，如果遍历过程中对集合对象的内容进行了增加、删除、修改操作，则会抛出ConcurrentModificationException。
+
+原理：迭代器在遍历时直接访问集合中的内容，并且在遍历过程中使用一个 modCount 变量。集合在被遍历期间如果内容发生变化，就会改变modCount的值。每当迭代器使用hashNext()/next()遍历下一个元素之前，都会检测modCount变量是否为expectedmodCount值，是的话就返回遍历；否则抛出ConcurrentModificationException异常，终止遍历。
+
+注意：这里异常的抛出条件是检测到 modCount！=expectedmodCount 这个条件。如果集合发生变化时修改modCount值刚好又设置为了expectedmodCount值，则异常不会抛出。因此，不能依赖于这个异常是否抛出而进行并发操作的编程，这个异常只建议用于检测并发修改的bug。
+
+场景：java.util包下的集合类都是快速失败的，不能在多线程下发生并发修改（迭代过程中被修改）。
+
+**Dubbo中的集群容错**
+
+**Dubbo中的快速失败**
+
+**r 只会进行一次调用，失败后立即抛出异常。****适用于非幂等操作，比如新增记录。**
+
+**Dubbo中的失败安全**
+
+**所谓的失败安全是指，当调用过程中出现异常时，FailsafeClusterInvoker 仅会打印异常，而不会抛出异常。****适用于写入审计日志等操作。**
+
 
 
 ## 线程转换关系
@@ -3400,6 +3623,8 @@ ArrayBlockingQueue在生产者放入数据和消费者获取数据，都是共�
 
 
 ## 线程池
+
+https://tech.meituan.com/2020/04/02/java-pooling-pratice-in-meituan.html
 
 ### JAVA线程池参数详解
 
@@ -3439,6 +3664,35 @@ ThreadPoolExecutor.AbortPolicy:丢弃任务并抛出RejectedExecutionException�
 ThreadPoolExecutor.DiscardPolicy：丢弃任务，但是不抛出异常。
 ThreadPoolExecutor.DiscardOldestPolicy：丢弃队列最前面的任务，然后重新提交被拒绝的任务
 ThreadPoolExecutor.CallerRunsPolicy：由调用线程（提交任务的线程）处理该任务
+
+### 好处
+
+- **降低资源消耗**：通过池化技术重复利用已创建的线程，降低线程创建和销毁造成的损耗。
+- **提高响应速度**：任务到达时，无需等待线程创建即可立即执行。
+- **提高线程的可管理性**：线程是稀缺资源，如果无限制创建，不仅会消耗系统资源，还会因为线程的不合理分布导致资源调度失衡，降低系统的稳定性。使用线程池可以进行统一的分配、调优和监控。
+- **提供更多更强大的功能**：线程池具备可拓展性，允许开发人员向其中增加更多的功能。比如延时定时线程池ScheduledThreadPoolExecutor，就允许任务延期执行或定期执行。
+
+### 回收线程
+
+线程池需要管理线程的生命周期，需要在线程长时间不运行的时候进行回收。线程池使用一张Hash表去持有线程的引用，这样可以通过添加引用、移除引用这样的操作来控制线程的生命周期。这个时候重要的就是如何判断线程是否在运行。
+
+Worker是通过继承AQS，使用AQS来实现独占锁这个功能。没有使用可重入锁ReentrantLock，而是使用AQS，为的就是实现不可重入的特性去反应线程现在的执行状态。
+
+1.lock方法一旦获取了独占锁，表示当前线程正在执行任务中。 2.如果正在执行任务，则不应该中断线程。 3.如果该线程现在不是独占锁的状态，也就是空闲的状态，说明它没有在处理任务，这时可以对该线程进行中断。 4.线程池在执行shutdown方法或tryTerminate方法时会调用interruptIdleWorkers方法来中断空闲的线程，interruptIdleWorkers方法会使用tryLock方法来判断线程池中的线程是否是空闲状态；如果线程是空闲状态则可以安全回收。
+
+在线程回收过程中就使用到了这种特性，回收过程如下图所示：
+
+![图8 线程池回收过程](https://gitee.com/xurunxuan/picgo/raw/master/img/9d8dc9cebe59122127460f81a98894bb34085.png)
+
+### **Worker线程执行任务**
+
+在Worker类中的run方法调用了runWorker方法来执行任务，runWorker方法的执行过程如下：
+
+1.while循环不断地通过getTask()方法获取任务。 2.getTask()方法从阻塞队列中取任务。 3.如果线程池正在停止，那么要保证当前线程是中断状态，否则要保证当前线程不是中断状态。 4.执行任务。 5.如果getTask结果为null则跳出循环，执行processWorkerExit()方法，销毁线程。
+
+执行流程如下图所示：
+
+![图11 执行任务流程](https://gitee.com/xurunxuan/picgo/raw/master/img/879edb4f06043d76cea27a3ff358cb1d45243.png)
 
 
 
@@ -3862,6 +4116,8 @@ Core1和Core2可能会同时把主存中某个位置的值Load到自己的L1 Cac
 
 3ABA问题
 
+只能保证一个共享变量的原子操作。
+
 ## CGLIB和JDK
 
 CGLib创建的动态代理对象性能比JDK创建的动态代理对象的性能高不少，但是CGLib在创建代理对象时所花费的时间却比JDK多得多，所以对于单例的对象，因为无需频繁创建对象，用CGLib合适，反之，使用JDK方式要更为合适一些。同时，由于CGLib由于是采用动态创建子类的方法，对于final方法，无法进行代理。
@@ -3947,6 +4203,8 @@ GC(垃圾回收/garbage collector)也不是完美的，缺点就是如果会在�
 
 ## ThreadLocal
 
+https://blog.csdn.net/mycs2012/article/details/90898128
+
 场景
 
 我们上线后发现部分用户的日期居然不对了，排查下来是SimpleDataFormat的锅，当时我们使用SimpleDataFormat的parse()方法，内部有一个Calendar对象，调用SimpleDataFormat的parse()方法会先调用Calendar.clear（），然后调用Calendar.add()，如果一个线程先调用了add()然后另一个线程又调用了clear()，这时候parse()方法解析的时间就不对了。
@@ -3958,6 +4216,47 @@ GC(垃圾回收/garbage collector)也不是完美的，缺点就是如果会在�
 我在项目中存在一个线程经常遇到横跨若干方法调用，需要传递的对象，也就是上下文（Context），它是一种状态，经常就是是用户身份、任务信息等，就会存在过渡传参的问题。
 
 使用到类似责任链模式，给每个方法增加一个context参数非常麻烦，而且有些时候，如果调用链有无法修改源码的第三方库，对象参数就传不进去了，所以我使用到了ThreadLocal去做了一下改造，这样只需要在调用前在ThreadLocal中设置参数，其他地方get一下就好了。
+
+**原理**
+
+- 首先获取当前线程
+- 利用当前线程作为句柄获取一个ThreadLocalMap的对象
+- 如果上述ThreadLocalMap对象不为空，则设置值，否则创建这个ThreadLocalMap对象并设置值
+
+```
+public void set(T value) {
+    Thread t = Thread.currentThread();
+    ThreadLocalMap map = getMap(t);
+    if (map != null)
+        map.set(this, value);
+    else
+        createMap(t, value);
+}
+```
+
+**InternalThread 的内部使用的是数组，通过下标定位，非常的快。如果遇得扩容，直接搞一个扩大一倍的\**数组\**，然后copy 原数组，多余位置用指定对象填充，完事。**
+
+**而 ThreadLocal 的内部使用的是 hashCode 去获取值，多了一步计算的过程，而且用 hashCode 必然会遇到 hash 冲突的场景，ThreadLocal 还得去解决 hash 冲突，如果遇到扩容，扩容之后还得 rehash ,这可不得慢吗？**
+
+
+
+![jdk ThreadLocal](https://gitee.com/xurunxuan/picgo/raw/master/img/20190605102510101.png)
+在java线程中，每个线程都有一个ThreadLocalMap实例变量（如果不使用ThreadLocal，不会创建这个Map，一个线程第一次访问某个ThreadLocal变量时，才会创建）。该Map是使用线性探测的方式解决hash冲突的问题，如果没有找到空闲的slot，就不断往后尝试，直到找到一个空闲的位置，插入entry，这种方式在经常遇到hash冲突时，影响效率。
+
+FastThreadLocal(下文简称ftl)直接使用数组避免了hash冲突的发生，具体做法是：每一个FastThreadLocal实例创建时，分配一个下标index；分配index使用AtomicInteger实现，每个FastThreadLocal都能获取到一个不重复的下标。当调用ftl.get()方法获取值时，直接从数组获取返回，如return array[index]，如下图：
+![netty FastThreadLocal](https://gitee.com/xurunxuan/picgo/raw/master/img/20190605102510101.png)
+
+> ```
+> private final int index;
+> 
+> public FastThreadLocal() {
+>     index = InternalThreadLocalMap.nextVariableIndex();
+> }
+> ```
+>
+> FastThreadLocal有自己的编号
+>
+> 如果是其他的普通线程，就会退化到jdk的ThreadLocal的情况，因为普通线程没有包含InternalThreadLocalMap这样的数据结构
 
 ## web 容器的作用
 
@@ -3989,6 +4288,15 @@ https://www.zhihu.com/question/20794107
 ### 动手模拟JDK动态代理
 
 https://mp.weixin.qq.com/s/TLhuQ6Eiqk5Js8NlRbaOZw
+
+### ams原理
+
+https://tech.meituan.com/2019/09/05/java-bytecode-enhancement.html
+
+- 首先通过MyClassVisitor类中的visitMethod方法，判断当前字节码读到哪一个方法了。跳过构造方法 `<init>` 后，将需要被增强的方法交给内部类MyMethodVisitor来进行处理。
+- 接下来，进入内部类MyMethodVisitor中的visitCode方法，它会在ASM开始访问某一个方法的Code区时被调用，重写visitCode方法，将AOP中的前置逻辑就放在这里。
+- MyMethodVisitor继续读取字节码指令，每当ASM访问到无参数指令时，都会调用MyMethodVisitor中的visitInsn方法。我们判断了当前指令是否为无参数的“return”指令，如果是就在它的前面添加一些指令，也就是将AOP的后置逻辑放在该方法中。
+- 综上，重写MyMethodVisitor中的两个方法，就可以实现AOP了，而重写方法时就需要用ASM的写法，手动写入或者修改字节码。通过调用methodVisitor的visitXXXXInsn()方法就可以实现字节码的插入，XXXX对应相应的操作码助记符类型，比如mv.visitLdcInsn(“end”)对应的操作码就是ldc “end”，即将字符串“end”压入栈。
 
 ## 泛型缺点
 
@@ -4202,6 +4510,20 @@ HotSpot 用的就是映射表，这个表叫 OopMap。
 因此称为准确式 GC。
 
 https://mp.weixin.qq.com/s/AZ_Xv28cF1xxloluJaniww
+
+## unsafe
+
+Unsafe是位于sun.misc包下的一个类，主要提供一些用于执行低级别、不安全操作的方法，如直接访问系统内存资源、自主管理内存资源等，这些方法在提升Java运行效率、增强Java语言底层资源操作能力方面起到了很大的作用。但由于Unsafe类使Java语言拥有了类似C语言指针一样操作内存空间的能力，这无疑也增加了程序发生相关指针问题的风险。在程序中过度、不正确使用Unsafe类会使得程序出错的概率变大，使得Java这种安全的语言变得不再“安全”，因此对Unsafe的使用一定要慎重。
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/f182555953e29cec76497ebaec526fd1297846.png)
+
+## string hashcode方法
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHeHKjcpvlHpKNLxF11ELa8alleA0OETq8ly9uuibm50t9tSfj3qH2ico8NCXJZShic7JAMibjrncPMiaMw/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHeHKjcpvlHpKNLxF11ELa8a1D7vCcNcjPGmqFN1VMeaNhgHn3qcd8Omu3bobibKKvKaDXb1LHb0mNw/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+
 
 # Mysql
 
@@ -4721,11 +5043,25 @@ https://cloud.tencent.com/developer/article/1013767
 
 https://zhuanlan.zhihu.com/p/54275505
 
-**
+## 分库分表
 
-## 分库表关联问题**
+### 分库表关联问题**
 
 在单库单表的情况下，联合查询是非常容易的。但是，随着分库与分表的演变，联合查询就遇到跨库关联的问题。粗略的解决方法：ER分片：子表的记录与所关联的父表记录存放在同一个数据分片上。全局表：基础数据，所有库都拷贝一份。字段冗余：这样有些字段就不用join去查询了。ShareJoin：是一个简单的跨分片join，目前支持2个表的join,原理就是解析SQL语句，拆分成单表的SQL语句执行，然后把各个节点的数据汇集。
+
+### 执行流程
+
+1）SQL 解析：解析分为词法解析和语法解析。我先通过词法解析器将这句 SQL 拆分为一个个不可再分的单词，再使用语法解析器对 SQL 进行理解，并最终提炼出解析上下文。简单来说就是我要理解这句 SQL，明白它的构造和行为，这是下面的优化、路由、改写、执行和归并的基础。
+
+2）SQL 路由：我根据解析上下文匹配用户对这句 SQL 所涉及的库和表配置的分片策略（关于用户配置的分片策略，我后文会慢慢解释），并根据分片策略生成路由后的 SQL。路由后的 SQL 有一条或多条，每一条都对应着各自的真实物理分片。
+
+3）SQL 改写：我将 SQL 改写为在真实数据库中可以正确执行的语句（逻辑 SQL 到物理 SQL 的映射，例如把逻辑表名改成带编号的分片表名）。
+
+4）SQL 执行：我通过多线程执行器异步执行路由和改写之后得到的 SQL 语句。
+
+5）结果归并：我将多个执行结果集归并以便于通过统一的 JDBC 接口输出。
+
+![img](https://mmbiz.qpic.cn/mmbiz_png/OyweysCSeLXbJicylPp1ZUbxsfEJMMYbwldvPgmhhujp2B7TLByNabqt2trseNXKWZsyCsCDYzPBe9SyQchkg8w/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
 
 ## Mysql优缺点
 
@@ -4890,7 +5226,11 @@ https://www.jianshu.com/p/9ea61d204559
 
 https://www.jianshu.com/p/8a20c547e245
 
-![5B8B0737-C47F-4D0B-AD98-3E23EBDB8DBB](README.assets/5B8B0737-C47F-4D0B-AD98-3E23EBDB8DBB.png)
+![image-20201112153359255](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201112153359255.png)
+
+
+
+![image-20201112153321382](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201112153321382.png)
 
 
 
@@ -6510,6 +6850,10 @@ https://www.bilibili.com/video/BV12E411i7ga
 ## 解决慢查询例子
 
 https://juejin.im/post/6844903696275341319#heading-11
+
+## 快速的分析堆栈信息
+
+https://juejin.im/post/6844904094918770701
 
 # 智力题
 
