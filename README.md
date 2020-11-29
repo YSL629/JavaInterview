@@ -462,6 +462,14 @@ TCP协议保证数据传输可靠性的方式主要有：
 
 那么假设 client 发送 FIN 给 server 的时候 server 也没数据给 client，那么 server 就可以将 ACK 和它的 FIN 一起发给client ，然后等待 client 的 ACK，这样不就三次挥手了？
 
+**半关闭的作用**
+
+![image-20201124151513166](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201124151513166.png)
+
+![image-20201124151542969](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201124151542969.png)
+
+
+
 ### 服务器主动中断
 
 当服务器进程被终止时，会关闭其打开的所有文件描述符，此时就会向客户端发送一个**FIN** 的报文,客户端则响应一个**ACK** 报文,但是这样只完成了**“四次挥手”**的前两次挥手，也就是说这样只实现了半关闭，客户端仍然可以向服务器写入数据。
@@ -696,6 +704,12 @@ Server进程所在的主机宕机
 >
 > TCP连接的本端接收缓冲区中还有未接收数据的情况下close了Socket，则本端TCP会向对端发送RST包，而不是正常的FIN包，这就会导致对端进程提前（RST包比正常数据包先被收到）收到“10054: An existing connection was forcibly closed by the remote host”（Windows下）或“104: Connection reset by peer”（Linux下）错误
 
+### TCP和UDP可以监听同一个端口
+
+- TCP和UDP传输协议监听同一个端口后，接收数据互不影响，不冲突。因为数据接收时时根据五元组`{传输协议，源IP，目的IP，源端口，目的端口}`判断接受者的。
+
+[C/C++学习](https://www.jianshu.com/nb/20236850)
+
 ## **IP头结构的定义**
 
 ![image-20201110152558769](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201110152558769.png)
@@ -830,6 +844,20 @@ https://blog.csdn.net/baidu_36649389/article/details/53240579
 
 签名的产生算法：首先，使用散列函数计算公开的明文信息的信息摘要，然后，采用 CA 的私钥对信息摘要进行加密，密文即签名；
 
+### HTTPS劫持
+
+网站证书是否被信任，取决于证书机构是否是被认证，Chrome 等其他浏览器使用的是系统根证书，当系统被导入了一个未知的根证书，即使颁发机构不被认可，访问这个证书名下的网站都是能正常访问的。
+
+## 加密算法原理
+
+![image-20201122153951533](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201122153951533.png)
+
+https://www.bilibili.com/video/BV1Ts411H7u9?from=search&seid=14808444688510890158
+
+RSA算法第一步，取两个安全大素数p，q，取n＝p×q        f（n）  ＝（p-1）（q-1）   f（n）是n的欧拉函数
+第二步 选取e   （1＜e＜f（n））   满足***（e,f（n））＝1即互质
+第三步   通过拓展欧几里得算法算出  ed＝1 mod f（n）   d为私钥，（e，n）为公钥对
+
 
 
 ## HTTP格式
@@ -941,7 +969,7 @@ https://segmentfault.com/a/1190000007403846
 
 遍历recv接受到的请求字符串，检查是否遇到回车符**r**判断一行数据。
 
-对于起始行，检查是否遇到空格分隔不同的字段；对于首部，检查是否遇到冒号分隔键值对的字段值；对于实体的主体部分，则先判断是否遇到CRLF字符串，然后将剩余内容全部作为实体的主体部分。
+对于起始行，检查是否遇到空格分隔不同的字段；对于首部，检查是否遇到冒号分隔键值对的字段值；对于实体的主体部分，则先判断是否遇到 换行回车字符串，然后将剩余内容全部作为实体的主体部分。
 
 返回值是告知程序下一次遍历的起始位置。
 
@@ -950,6 +978,42 @@ https://segmentfault.com/a/1190000007403846
 ## http劫持
 
 https://juejin.im/post/6844903991764058126#comment
+
+#### 概念：
+
+在可劫持的网络范围内，拦截  域名解析  的请求，分析其域名，把拦截条件范围外的放行，范围内的返回篡改后的ip或失去响应。
+
+#### 效果：
+
+使特定网络无法响应或返回假地址。
+
+#### 本质：
+
+对DNS解析服务器做手脚或使用伪造的DNS解析器。
+
+#### 非劫持过程：
+
+1. 客户端发起域名请求到DNS解析服务器（一般是LocalDNS）；
+2. DNS服务器将域名转换为公网ip（在ip运营商处查询），将请求转发给目标服务器；
+3. 目标服务器响应后将数据信息回传给DNS服务器；
+4. DNS服务器将响应信息转发回客户端。
+
+#### 劫持过程：
+
+1. 客户端发起域名请求到DNS解析服务器（一般是LocalDNS），但此时DNS解析服务器被攻击篡改；
+2. 被攻击篡改后的DNS解析服务器将请求转发给虚假服务器；
+3. 虚假服务器返回响应信息给被攻击篡改后的DNS解析服务器（也可能直接不响应）；
+4. 被攻击篡改后的DNS解析服务器将虚假的响应信息转发回客户端。
+
+#### 解决办法：
+
+DNS劫持的本质是运营商的DNS解析服务器被攻击篡改，所以可以使用自己的解析服务器代替或在客户端直接以ip的形式将请求发出去，绕过运营商的DNS解析服务器，从而避免被劫持。
+
+
+作者：金悦
+链接：https://juejin.cn/post/6844903991764058126
+来源：掘金
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 
 ## HTTP缓存机制及原理
 
@@ -1015,6 +1079,46 @@ https://developer.aliyun.com/article/222535
 
 要做的是发送分组，并设置“不分片”标志比特。发送的
 第一个分组的长度正好与出口 M T U相等，每次收到I C M P“不能分片”差错时就减小分组的长度。
+
+## IP分片
+
+https://my.oschina.net/xinxingegeya/blog/483138
+
+***原因是IP层是没有超时重传机制的 ，如果IP层对一个数据包进行了分片，只要有一个分片丢失了，只能依赖于传输层进行重传，结果是所有的分片都要重传一遍，这个代价有点大。******由此可见，IP分片会大大降低传输层传送数据的成功率，所以我们要避免IP分片。***
+
+对于TCP协议，应用层就不需要考虑这个问题了，因为传输层已经帮我们做了。***在建立连接的TCP三次握手的过程中，连接双方会相互通告MSS（Maximum Segment Size，最大报文段长度1460），MSS一般是MTU - IP首部（20） - TCP首部（20），每次发送的TCP数据都不会超过双方MSS的值，所以就保证了IP数据报不会超过MTU，避免了IP分片。***
+
+IP分片重组
+
+***接收方在收到经过IP层分片的数据报文后，首先根据分片标志中的 MF（More Fragment）位 （MF位为1表示当前数据报还有更多的分片，为0表示当前分片是该数据报最后一个分片。）判断是否是最后一个分片报文，如果是，则根据分片偏移量计算各个分片报文在原始数据报中的位置，进行重组。如果不是最后一个分片，则需等待所有分片到达后再完成重组。***
+
+分片带来的问题
+
+1.分片带来的性能消耗
+
+分片和重组会消耗发送方、接收方一定的CPU等资源，如果存在大量的分片报文的话，可能会造成较为严重的资源消耗；
+
+分片对接收方内存资源的消耗较多，因为接收方要为接收到的每个分片报文分配内存空间，以便于最后一个分片报文到达后完成重组。
+
+2.分片丢包导致的重传问题
+
+***如果某个分片报文在网络传输过程中丢失，那么接收方将无法完成重组，如果应用进程要求重传的话，发送方必须重传所有分片报文而不是仅重传被丢弃的那个分片报文，这种效率低下的重传行为会给端系统和网络资源带来额外的消耗。***
+
+3.分片攻击
+
+黑客构造的分片报文，但是不向接收方发送最后一个分片报文，导致接收方要为所有的分片报文分配内存空间，可由于最后一个分片报文永远不会达到，接收方的内存得不到及时的释放（接收方会启动一个分片重组的定时器，在一定时间内如果无法完成重组，将向发送方发送ICMP重组超时差错报文，，只要这种攻击的分片报文发送的足够多、足够快，很容易占满接收方内存，让接收方无内存资源处理正常的业务，从而达到DOS的攻击效果。
+
+> !我们防护一般是也是通过防火墙，防火墙上可以限制IP分片每秒的流量
+
+4.安全隐患
+
+由于分片只有第一个分片报文具有四层信息而其他分片没有，这给路由器、防火墙等中间设备在做访问控制策略匹配的时候带来了麻烦。
+
+如果路由器、防火墙等中间设备不对分片报文进行安全策略的匹配检测而直接放行IP分片报文，则有可能给接收方带来安全隐患和威胁，因为黑客可以利用这个特性，绕过路由器、防火墙的安全策略检查对接收方实施攻击；
+
+如果路由器、防火墙等中间设备对这些分片报文进行重组后在匹配其安全策略，那么又会对这些中间设备的资源带来极大的消耗，特别是在遇到分片攻击的时候，这些中间设备会在第一时间内消耗完其所有内存资源，从而导致全网中断的严重后果。
+
+## 
 
 ## 正向代理和反向代理的区别
 
@@ -1370,6 +1474,14 @@ Reactor模式
 
 Redis序列化协议
 
+在`RESP`中，数据类型取决于数据报的第一个字节：
+
+- 单行字符串的第一个字节为`+`。
+- 错误消息的第一个字节为`-`。
+- 整型数字的第一个字节为`:`。
+- 定长字符串的第一个字节为`$`。
+- `RESP`数组的第一个字节为`*`。
+
 5、使用底层模型不同，它们之间底层实现方式以及与客户端之间通信的应用协议不一样，Redis直接自己构建了VM 机制 ，因为一般的系统调用系统函数的话，会浪费一定的时间去移动和请求；
 
 ## 缓存一致性
@@ -1524,6 +1636,14 @@ redis是基于内存的单线程，在操作不当的情况（比如删除大key
 1.删除大key，主线程unlike 然后后台线程异步删除
 
 2.aof
+
+## redis集群
+
+[redis]()的集群是将一共16384个槽分给集群中节点，每个节点通过gossip消息得知其它节点的信息，并在自身的clusterState中记录了所有的节点的信息和槽数组的分配情况
+
+小哥哥：[客户端]()是如何访问集群的？
+
+我：[客户端]()会先访问集群中的一个节点，如果槽命中直接访问，如果不命中，则会返回MOVED指令，并告知槽实际存在的节点，然后再去访问。(这里其实还有个迁移中的情况，如果访问的槽正在迁移，则返回ask命令，[客户端]()会被引导去目标节点查找)
 
 
 
@@ -1915,9 +2035,24 @@ https://blog.csdn.net/FX677588/article/details/70767446
 
 缺点：与AVL相比高度更大，所以查询比AVL慢一丢丢
 
-## Log Structured Merge Trees(LSM) 原理
+## Log Structured Merge Trees(LSM树) 原理
 
 https://www.open-open.com/lib/view/open1424916275249.html
+
+简单的说，LSM被设计来提供比传统的B+树或者ISAM更好的写操作吞吐量，通过消去随机的本地更新操作来达到这个目标。
+
+读场景（比如按key或者range）提供高效的性能，这儿有4个方法可以完成这个，它们分别是：
+
+1. 二分查找: 将文件数据有序保存，使用二分查找来完成特定key的查找。
+2. 哈希：用哈希将数据分割为不同的bucket
+3. B+树：使用B+树 或者 ISAM 等方法，可以减少外部文件的读取
+4. 外部文件： 将数据保存为日志，并创建一个hash或者查找树映射相应的文件。
+
+所有的方法都可以有效的提高了**读操作**的性能（最少提供了O(log(n)) )，但是，却丢失了日志文件超好的写性能。上面这些方法，都强加了总体的结构信息在数据上，数据被按照特定的方式放置，所以可以很快的找到特定的数据，但是却对写操作不友善，让写操作性能下降。
+
+从概念上说，最基本的LSM是很简单的 。将之前使用一个大的查找结构（造成随机读写，影响写性能），变换为将写操作顺序的保存到一些相似的有序文件（也就是sstable)中。所以每个文件包 含短时间内的一些改动。因为文件是有序的，所以之后查找也会很快。文件是不可修改的，他们永远不会被更新，新的更新操作只会写到新的文件中。读操作检查很 有的文件。通过周期性的合并这些文件来减少文件个数。
+
+[![basic lsm](https://camo.githubusercontent.com/1218b935160a7a0f9afa1c5bd6774c195dc44ea8/687474703a2f2f7777772e62656e73746f70666f72642e636f6d2f77702d636f6e74656e742f75706c6f6164732f323031352f30322f4a6f75726e616c362d31303234783530332e706e67)](https://www.open-open.com/misc/goto?guid=4959627134618001462)
 
 ## 高性能无锁队列Disruptor
 
@@ -1937,6 +2072,34 @@ cup缓存会加载一行数据，如果是数组的话，会加载数组的几�
 
 
 # 操作系统
+
+## 内核空间 用户空间 同步异步
+
+https://developer.aliyun.com/article/726412
+
+- 内核空间
+
+操作系统单独拥有的内存空间为内核空间，这块内存空间独立于其他的应用内存空间，除了操作系统，其他应用程序不允许访问这块空间。但操作系统可以同时操作内核空间和用户空间。
+
+- 用户空间
+
+单独给用户应用进程分配的内存空间，操作系统和应用程序都可以访问这块内存空间。
+
+- 同步
+
+调用线程发出同步请求后，在没有得到结果前，该调用就不会返回。所有同步调用都必须是串行的，前面的同步调用处理完了后才能处理下一个同步调用。
+
+- 异步
+
+调用线程发出异步请求后，在没有得到结果前，该调用就返回了。真正的结果数据会在业务处理完成后通过发送信号或者回调的形式通知调用者。
+
+- 阻塞
+
+调用线程发出请求后，在没有得到结果前，该线程就会被挂起，此时CPU也不会给此线程分配时间，此线程处于非可执行状态。直到返回结果返回后，此线程才会被唤醒，继续运行。划重点：线程进入阻塞状态不占用CPU资源。
+
+- 非阻塞
+
+调用线程发出请求后，在没有得到结果前，该调用就返回了，整个过程调用线程不会被挂起。
 
 ## 中断
 
@@ -2469,6 +2632,16 @@ kill -s 9 27810
 
 https://juejin.im/post/6844904084168769549#heading-34
 
+### Linux怎么唤醒线程
+
+我们可以使用下面的这个函数将刚才那个进入睡眠的进程唤醒。
+
+
+wake_up_process(sleeping_task);
+
+
+在调用了 wake_up_process() 以后，这个睡眠进程的状态会被设置为 TASK_RUNNING，而且调度器会把它加入到运行队列中去。当然，这个进程只有在下次被调度器调度到的时候才能真正地投入运行。
+
 
 
 ## Netty Reactor模型
@@ -2515,6 +2688,70 @@ mmap的工作原理，当你发起这个调用的时候，它只是在你的虚�
 
 所以，**如果你能确定被锁住的代码执行时间很短，就不应该用互斥锁，而应该选用自旋锁，否则使用互斥锁。**
 
+## 操作系统内存管理
+
+https://blog.csdn.net/hguisu/article/details/5713164
+
+###  **固定分区(nxedpartitioning)。**
+
+​    固定式分区的特点是把内存划分为若干个固定大小的连续分区。分区大小可以相等：这种作法只适合于多个相同程序的并发执行(处理多个类型相同的对象)。分区大小也可以不等：有多个小分区、适量的中等分区以及少量的大分区。根据程序的大小，分配当前空闲的、适当大小的分区。
+
+   **优点**：易于实现，开销小。
+
+   ***\*缺点主要有两个\****：内碎片造成浪费；分区总数固定，限制了并发执行的程序数目。
+
+### **3.2.2动态分区(dynamic partitioning)。**
+
+​    动态分区的特点是动态创建分区：在装入程序时按其初始要求分配，或在其执行过程中通过系统调用进行分配或改变分区大小。与固定分区相比较其优点是：没有内碎片。但它却引入了另一种碎片——外碎片。动态分区的分区分配就是寻找某个空闲分区，其大小需大于或等于程序的要求。若是大于要求，则将该分区分割成两个分区，其中一个分区为要求的大小并标记为“占用”，而另一个分区为余下部分并标记为“空闲”。分区分配的先后次序通常是从内存低端到高端。动态分区的分区释放过程中有一个要注意的问题是，将相邻的空闲分区合并成一个大的空闲分区。
+
+下面列出了几种常用的分区分配算法：
+
+​    **最先适配法(nrst-fit)：**按分区在内存的先后次序从头查找，找到符合要求的第一个分区进行分配。该算法的分配和释放的时间性能较好，较大的空闲分区可以被保留在内存高端。但随着低端分区不断划分会产生较多小分区，每次分配时查找时间开销便会增大。
+
+​    **下次适配法(循环首次适应算法 next fit)：**按分区在内存的先后次序，从上次分配的分区起查找(到最后{区时再从头开始}，找到符合要求的第一个分区进行分配。该算法的分配和释放的时间性能较好，使空闲分区分布得更均匀，但较大空闲分区不易保留。
+
+​    **最佳适配法(best-fit)：**按分区在内存的先后次序从头查找，找到其大小与要求相差最小的空闲分区进行分配。从个别来看，外碎片较小；但从整体来看，会形成较多外碎片优点是较大的空闲分区可以被保留。
+
+​    **最坏适配法(worst- fit)：**按分区在内存的先后次序从头查找，找到最大的空闲分区进行分配。基本不留下小空闲分区，不易形成外碎片。但由于较大的空闲分区不被保留，当对内存需求较大的进程需要运行时，其要求不易被满足。
+
+###  伙伴系统
+
+​    固定分区和动态分区方式都有不足之处。固定分区方式限制了活动进程的数目，当进程大小与空闲分区大小不匹配时，内存空间利用率很低。动态分区方式算法复杂，回收空闲分区时需要进行分区合并等，系统开销较大。伙伴系统方式是对以上两种内存方式的一种折衷方案。
+​    伙伴系统规定，无论已分配分区或空闲分区，其大小均为 2 的 k 次幂，k 为整数， l≤k≤m，其中：
+
+​    2^1 表示分配的最小分区的大小，
+
+​    2^m 表示分配的最大分区的大小，
+
+​    通常 2^m是整个可分配内存的大小。
+​    假设系统的可利用空间容量为2^m个字， 则系统开始运行时， 整个内存区是一个大小为2^m的空闲分区。在系统运行过中， 由于不断的划分，可能会形成若干个不连续的空闲分区，将这些空闲分区根据分区的大小进行分类，对于每一类具有相同大小的所有空闲分区，单独设立一个空闲分区双向链表。这样，不同大小的空闲分区形成了k(0≤k≤m)个空闲分区链表。 
+
+​    ***\*分配步骤：\****
+
+​    当需要为进程分配一个长度为n 的存储空间时:
+
+​    首先计算一个i 值，使 2^(i－1) <n ≤ 2^i，
+
+​    然后在空闲分区大小为2^i的空闲分区链表中查找。
+
+​    若找到，即把该空闲分区分配给进程。
+
+​    否则，表明长度为2^i的空闲分区已经耗尽，则在分区大小为2^(i＋1)的空闲分区链表中寻找。
+
+​    若存在 2^(i＋1)的一个空闲分区，则把该空闲分区分为相等的两个分区，***\*这两个分区称为一对伙伴，\****其中的一个分区用于配，  而把另一个加入分区大小为2^i的空闲分区链表中。
+
+​    若大小为2^(i＋1)的空闲分区也不存在，则需要查找大小为2^(i＋2)的空闲分区， 若找到则对其进行两次分割：
+
+​       第一次，将其分割为大小为 2^(i＋1)的两个分区，一个用于分配，一个加入到大小为 2^(i＋1)的空闲分区链表中；
+
+​       第二次，将第一次用于分配的空闲区分割为 2^i的两个分区，一个用于分配，一个加入到大小为 2^i的空闲分区链表中。
+
+   若仍然找不到，则继续查找大小为 2^(i＋3)的空闲分区，以此类推。
+
+   由此可见，在最坏的情况下，可能需要对 2^k的空闲分区进行 k 次分割才能得到所需分区。
+
+   与一次分配可能要进行多次分割一样，一次回收也可能要进行多次合并，如回收大小为2^i的空闲分区时，若事先已存在2^i的空闲分区时，则应将其与伙伴分区合并为大小为2^i＋1的空闲分区，若事先已存在2^i＋1的空闲分区时，又应继续与其伙伴分区合并为大小为2^i＋2的空闲分区，依此类推。
+
 ## Linux 内存管理
 
 https://mp.weixin.qq.com/s?__biz=MzUxODAzNDg4NQ==&mid=2247485033&idx=1&sn=bf9ba7aca126ad186922c57a96928593&chksm=f98e42c3cef9cbd514df38d04deb5e7a9ea67dbd478da75fc4a7636ee90b1384d65f68eb23f5&mpshare=1&scene=1&srcid=0929Ur9auGCTC1n9UBY0FzQF&sharer_sharetime=1601367341613&sharer_shareid=7c323ad8a0150d2a639a51a5c8978bfb&key=aabb5ee173354e5dcf522bcd39e8aa1cf40b72fabe0875e6f0eaa4b27d7ecb23809ce43974e694228da027bf0182ce38b2f14f903528fd044b5d0fe4c3b29fa952c407813bcc4f58024904459155ed163cac13f36b22bf066338ad245f0cf79678bf1a264fc0faaa46d3579ad310288af206dda357c384837be537d14235096e&ascene=1&uin=MjkxNjk0ODI0Mw%3D%3D&devicetype=Windows+10+x64&version=62090529&lang=zh_CN&exportkey=A3ahGDVv4pFZB75vteEHUGs%3D&pass_ticket=xVQ5kNeUfHtkgbP7YNzD5HV1x%2B7EDpTgwlwmOdGo23FSSOePrDbmST9xrvb9AYFF&wx_header=0
@@ -2550,6 +2787,8 @@ https://mp.weixin.qq.com/s?__biz=MzUxODAzNDg4NQ==&mid=2247485033&idx=1&sn=bf9ba7
 
 
 ##  Linux进程标准的内存段布局
+
+![Linux的进程地址空间[一]](https://gitee.com/xurunxuan/picgo/raw/master/img/v2-f6b5b028da63af405fa19eaf4f545f1a_1440w.jpg)
 
 ![img](https://gitee.com/xurunxuan/picgo/raw/master/img/20140904220105333)
 
@@ -2904,6 +3143,33 @@ nice 值并不是表示优先级，而是表示优先级的修正数值，它与
 - 记账信息：这类信息包括 CPU 时间、实际使用时间、时间期限、记账数据、作业或进程数量等。
 - I/O 状态信息：这类信息包括分配给进程的 I/O 设备列表、打开文件列表等。
 
+## 操作系统是32位还是64位
+
+用sizeof判断
+
+根据栈指针变量宽度来判断，感谢blitzhong同学的提示。对指针变量地址相减时，须将其转换为char*或无符号长整型（unsigned long），否则相减的结果为1，表示地址间隔内存放元素的个数
+
+```
+#include <iostream>
+using namespace std;
+
+int main()
+{
+        void* a;
+        void* b;
+        int scope=(char*)&a-(char*)&b;
+        cout<<"&a:"<<&a<<endl;
+        cout<<"&b:"<<&b<<endl;
+        cout<<"scope:"<<scope<<endl;
+        if(scope==8)
+                cout<<"64bits"<<endl;
+        else
+                cout<<"32bits"<<endl;
+}
+```
+
+
+
 # 设计模式
 
 ## 单例模式
@@ -3067,33 +3333,7 @@ https://www.jianshu.com/p/c6f190018db1
 
 
 
-## 内核空间 用户空间 同步异步
 
-https://developer.aliyun.com/article/726412
-
-- 内核空间
-
-操作系统单独拥有的内存空间为内核空间，这块内存空间独立于其他的应用内存空间，除了操作系统，其他应用程序不允许访问这块空间。但操作系统可以同时操作内核空间和用户空间。
-
-- 用户空间
-
-单独给用户应用进程分配的内存空间，操作系统和应用程序都可以访问这块内存空间。
-
-- 同步
-
-调用线程发出同步请求后，在没有得到结果前，该调用就不会返回。所有同步调用都必须是串行的，前面的同步调用处理完了后才能处理下一个同步调用。
-
-- 异步
-
-调用线程发出异步请求后，在没有得到结果前，该调用就返回了。真正的结果数据会在业务处理完成后通过发送信号或者回调的形式通知调用者。
-
-- 阻塞
-
-调用线程发出请求后，在没有得到结果前，该线程就会被挂起，此时CPU也不会给此线程分配时间，此线程处于非可执行状态。直到返回结果返回后，此线程才会被唤醒，继续运行。划重点：线程进入阻塞状态不占用CPU资源。
-
-- 非阻塞
-
-调用线程发出请求后，在没有得到结果前，该调用就返回了，整个过程调用线程不会被挂起。
 
 ## 32 位和 64 位 CPU 
 
@@ -3217,6 +3457,42 @@ Loop: x   = a + b      y   = x + y      _t1 = y < z      if _t1 goto Loop
 ```
 
 # Java
+
+## 面向过程
+
+优点：
+
+流程化使得编程任务明确，在开发之前基本考虑了实现方式和最终结果，具体步骤清楚，便于节点分析。
+
+效率高，面向过程强调代码的短小精悍，善于结合数据结构来开发高效率的程序。
+
+缺点：
+
+需要深入的思考，耗费精力，代码重用性低，扩展能力差，后期维护难度比较大。
+
+## 面向对象
+
+优点:
+
+结构清晰，程序是模块化和结构化，更加符合人类的思维方式；
+
+易扩展，代码重用率高，可继承，可覆盖，可以设计出低耦合的系统；
+
+易维护，系统低耦合的特点有利于减少程序的后期维护工作量。
+
+缺点：
+
+开销大，当要修改对象内部时，对象的属性不允许外部直接存取，所以要增加许多没有其他意义、只负责读或写的行为。这会为编程工作增加负担，增加运行开销，并且使程序显得臃肿。
+
+性能低，由于面向更高的逻辑抽象层，使得面向对象在实现的时候，不得不做出性能上面的牺牲，计算时间和空间存储大小都开销很大。
+
+比如我只需要一个数据却要加载整个对象进来
+
+
+
+> 一切事物皆对象，通过面向对象的方式，将现实世界的事物抽象成对象，现实世界中的关系抽象成类、继承，帮助人们实现对现实世界的抽象与数字建模。
+
+我们知道，编写程序的目的是为了解决现实生活中的问题，编程的思维方式也应该贴近现实生活的思维方式。面向对象的编程方式就是为了实现上述目的二出现的。它使得编程工作更直观，更易理解。需要注意的是**这里说的编程不光是coding还包括了设计的过程也是面向对象的**
 
 ## Java和C++
 
@@ -3612,7 +3888,30 @@ Java集合-快速失败
 
 **所谓的失败安全是指，当调用过程中出现异常时，FailsafeClusterInvoker 仅会打印异常，而不会抛出异常。****适用于写入审计日志等操作。**
 
+### ArrayList扩容机制
 
+```
+    private void grow(int minCapacity) {
+        //之前的容量
+        int oldCapacity = elementData.length;
+        //新的容量为之前的容量 1.5倍
+        int newCapacity = oldCapacity + (oldCapacity >> 1);
+        //如果新的容量小于 要扩容的容量，新的容量等于要扩容的容量
+        if (newCapacity - minCapacity < 0)
+            newCapacity = minCapacity;
+        //如果已经大于了最大的容量，那么已经到了最大的大小            
+        if (newCapacity - MAX_ARRAY_SIZE > 0)
+            newCapacity = hugeCapacity(minCapacity);
+        // minCapacity is usually close to size, so this is a win:
+        elementData = Arrays.copyOf(elementData, newCapacity);
+    }
+```
+
+1. 简单来说就是在增长数组的时候，与所需的最小的容量进行比较
+2. 保证要扩容的大小大于最小满足的容量
+3. 如果已经大于了最大的数组大小，再做一次最大的容量处理
+
+### 最后
 
 ## 线程转换关系
 
@@ -3829,7 +4128,9 @@ state 由于是多线程共享变量，所以必须定义成 volatile，以保�
 
 
 
+### 为什么需要个AQS
 
+主要是为了封装和抽象，通过封装了公共的方法，减少重复代码。
 
 
 
@@ -4523,7 +4824,82 @@ Unsafe是位于sun.misc包下的一个类，主要提供一些用于执行低级
 
 ![img](https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHeHKjcpvlHpKNLxF11ELa8a1D7vCcNcjPGmqFN1VMeaNhgHn3qcd8Omu3bobibKKvKaDXb1LHb0mNw/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
 
+## JVM常见参数
 
+
+
+![堆参数](https://gitee.com/xurunxuan/picgo/raw/master/img/java_jvm_heap_parameters.png)![](https://gitee.com/xurunxuan/picgo/raw/master/img/java_jvm_heap_parameters.png![垃圾回收器参数](https://snailclimb.gitee.io/javaguide/media/pictures/jvm/java_jvm_garbage_collector_parameters.png)
+
+## Java常用注解
+
+https://mp.weixin.qq.com/s?__biz=MzI3ODcxMzQzMw==&mid=2247487433&idx=1&sn=227d343dc27c8465cd1c1f8923547561&chksm=eb538affdc2403e9e0d0916491046411fa52c848bd1ae14781fc5ef1ad7fb9f5395278097dfa&mpshare=1&scene=1&srcid=1027KKBLQzUr1QNH1i0VeU7h#rd
+
+**1.声明bean的注解**
+
+@Component 组件，没有明确的角色
+
+@Service 在业务逻辑层使用（service层）
+
+@Repository 在数据访问层使用（dao层）
+
+@Controller 在展现层使用，控制器的声明（C）
+
+**2.注入bean的注解**
+
+@Autowired：由Spring提供
+
+@Inject：由JSR-330提供
+
+@Resource：由JSR-250提供
+
+都可以注解在set方法和属性上，推荐注解在属性上（一目了然，少写代码）。
+
+**3.java配置类相关注解**
+
+@Configuration 声明当前类为配置类，相当于xml形式的Spring配置（类上）
+
+@Bean 注解在方法上，声明当前方法的返回值为一个bean，替代xml中的方式（方法上）
+
+@Configuration 声明当前类为配置类，其中内部组合了@Component注解，表明这个类是一个bean（类上）
+
+@ComponentScan 用于对Component进行扫描，相当于xml中的（类上）
+
+@WishlyConfiguration 为@Configuration与@ComponentScan的组合注解，可以替代这两个注解
+
+**4.切面（AOP）相关注解**
+
+Spring支持AspectJ的注解式切面编程。
+
+@Aspect 声明一个切面（类上） 
+使用@After、@Before、@Around定义建言（advice），可直接将拦截规则（切点）作为参数。
+
+@After 在方法执行之后执行（方法上） 
+@Before 在方法执行之前执行（方法上） 
+@Around 在方法执行之前与之后执行（方法上）
+
+@PointCut 声明切点 
+在java配置类中使用@EnableAspectJAutoProxy注解开启Spring对AspectJ代理的支持（类上）
+
+**5.@Bean的属性支持**
+
+@Scope 设置Spring容器如何新建Bean实例（方法上，得有@Bean） 
+其设置类型包括：
+
+Singleton （单例,一个Spring容器中只有一个bean实例，默认模式）, 
+Protetype （每次调用新建一个bean）, 
+Request （web项目中，给每个http request新建一个bean）, 
+Session （web项目中，给每个http session新建一个bean）, 
+GlobalSession（给每一个 global http session新建一个Bean实例）
+
+@StepScope 在Spring Batch中还有涉及
+
+@PostConstruct 由JSR-250提供，在构造函数执行完之后执行，等价于xml配置文件中bean的initMethod
+
+@PreDestory 由JSR-250提供，在Bean销毁之前执行，等价于xml配置文件中bean的destroyMethod
+
+**6.@Value注解**
+
+@Value 为属性注入值（属性上） 
 
 # Mysql
 
@@ -4546,6 +4922,8 @@ MySQL根据优化器生成的执行计划，再调用存储引擎的API来执行
 ![img](https://gitee.com/xurunxuan/picgo/raw/master/img/5148507-ca8930bca4e10d05.png)
 
 ![SQL语句执行过程](README.assets/1652e56415e9a6f4)
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/ade8a223210cdce5e5d50a3e659a94bdca7.jpg)
 
 作者：程序员历小冰
 链接：https://juejin.im/post/5b7036de6fb9a009c40997eb
@@ -4718,6 +5096,8 @@ MySQL通过**两阶段提交**来保证`redo log`和`binlog`的数据是一致�
 
 1.有些sql语句无法复制，如当前的时间戳，rand,uuid函数
 
+2.在读提交的时候会有数据不一致问题
+
 行复制
 
 好处：
@@ -4763,6 +5143,24 @@ MySQL通过**两阶段提交**来保证`redo log`和`binlog`的数据是一致�
 3追赶新的主库
 
 4把写操作指向新的主库
+
+## MySQL为什么选择可重复读作为默认隔离级别
+
+https://www.cnblogs.com/rjzheng/p/10510174.html
+
+https://blog.csdn.net/qq_36827957/article/details/89145966
+
+![img](https://gitee.com/xurunxuan/picgo/raw/master/img/725429-20190311134942591-1582271936.jpg)
+
+当MySQL执行的时候，主库先删除后插入，但是写入日志是先插入后删除
+
+个人理解就是，比如事务1先执行语句1，之后事务2执行语句2并且提交，事务1再执行语句3。master的事务2是在事务1之间提交的，但是binlog中是先提交事务2再提交事务1，这样就会导致数据不一致。
+
+解决方案有两种！
+(1)隔离级别设为**可重复读(Repeatable Read)**,在该隔离级别下引入间隙锁。当`Session 1`执行delete语句时，会锁住间隙。那么，`Ssession 2`执行插入语句就会阻塞住！
+(2)将binglog的格式修改为row格式，此时是基于行的复制，自然就不会出现sql执行顺序不一样的问题！奈何这个格式在mysql5.1版本开始才引入。因此由于历史原因，mysql将默认的隔离级别设为**可重复读(Repeatable Read)**，保证主从复制不出问题！
+
+因为ROW或者MIXED格式的binlog，是基于数据的变动。在进行update或者delete操作，记录到binlog，同时会把数据的原始记录写入到binlog。所以日志文件会比Statement大些，上述演示过程，binlog的记录顺序仍然是按照事务的commit顺序为序的
 
 ## Mvcc和next-key lock为什么不能完全解决幻读
 
@@ -4889,17 +5287,56 @@ alter table person add index city_user(city, name);
 
 - **排序和分页影响较大**：比如 `order by id limit 10`按照10个一页取出第一页，原来只需要一张表执行直接返回给用户，现在有5个分库要从5张分表分别拿出10条数据然后排序，返回50条数据中最前面的10条。当翻到第二页的时候，需要每张表拿出20条数据然后排序，返回100条数据中的第二个11～20条。很明显这个操作非常损耗性能。
 
-## 什么是索引
+## 索引
 
 索引其实是一种数据结构，能够帮助我们快速的检索数据库中的数据。
 
-## B+ Tree索引和Hash索引区别 
+### B+ Tree索引和Hash索引区别 
 
 哈希索引适合等值查询，但是不无法进行范围查询 哈希索引没办法利用索引完成排序 哈希索引不支持多列联合索引的最左匹配规则 如果有大量重复键值得情况下，哈希索引的效率会很低，因为存在哈希碰撞问题
+
+### **索引条件下推ICP**
+
+![img](https://mmbiz.qpic.cn/mmbiz_jpg/ibBMVuDfkZUkPHUkLL7fw6G46auaCRgwMvNmT1tEcDFibEQrjicWGvU4wbM5BdSpNK7PV1aX8GYILO0UVLq9YFdIQ/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+在支持ICP后，MySQL在取出索引数据的同时，判断是否可以进行where条件过滤，将where的部分过滤操作放在存储引擎层提前过滤掉不必要的数据，减少了不必要数据被扫描带来的IO开销。
+
+![img](https://mmbiz.qpic.cn/mmbiz_jpg/ibBMVuDfkZUkPHUkLL7fw6G46auaCRgwMmzLlb1kTqK7mhfRSZJKYHQelsnF5LsASZPgvriaKnDNuouIibpPzOk7A/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+![img](https://mmbiz.qpic.cn/mmbiz_jpg/ibBMVuDfkZUkPHUkLL7fw6G46auaCRgwMABrwXQUsC5NfAZZ0rruTe7LexHBsEMrsJfKiaHvaSy5sOCRftkKicyNA/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+### 模糊匹配优化
+
+对于where条件后的 `like '%xxx'` 是无法利用索引扫描，可以利用MySQL 5.7的生成列模拟函数索引的方式解决，具体步骤如下：
+
+1. **利用内置reverse函数将like '%风云'反转为like '云风%'，基于此函数添加虚拟生成列。**
+2. **在虚拟生成列上创建索引。**
+3. **将SQL改写成通过生成列like reverse('%风云')去过滤，走生成列上的索引。**
+
+添加虚拟生成列并创建索引。
+
+```
+mysql>alter table users01 add reverse_nickname varchar(200) generated always as (reverse(nickname));
+mysql>alter table users01 add index idx_reverse_nickname(reverse_nickname);
+#SQL执行计划
+|  1 | SIMPLE      | users01 | NULL       | range | idx_reverse_nickname | idx_reverse_nickname | 803     | NULL |    1 |   100.00 | Using where |
+```
+
+可以看到对于 `like '%xxx'` 无法使用索引的场景，可以通过基于生成列的索引方式解决。
 
 ## 非关系数据库
 
 ![image-20200725100855235](README.assets/image-20200725100855235.png)
+
+### 全文索引
+
+MySQL 5.6开始支持全文索引，可以在变长的字符串类型上创建全文索引，来加速模糊匹配业务场景的DML操作。它是一个inverted index（反向索引），创建 `fulltext index` 时会自动创建6个 `auxiliary index tables`（辅助索引表），同时支持索引并行创建，并行度可以通过参数 `innodb_ft_sort_pll_degree` 设置，对于大表可以适当增加该参数值。
+
+删除全文索引的表的数据时，会导致辅助索引表大量delete操作，InnoDB内部采用标记删除，将已删除的DOC_ID都记录特殊的FTS_*_DELETED表中，但索引的大小不会减少，需要通过设置参数`innodb_optimize_fulltext_only=ON` 后，然后运行OPTIMIZE TABLE来重建全文索引。
+
+![img](https://mmbiz.qpic.cn/mmbiz_jpg/ibBMVuDfkZUkPHUkLL7fw6G46auaCRgwMLxGSQMEDRIwhn0KKWabkLVyT8e7kTesgcC8ib0oCYZqkzyZ1B6XO6zQ/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+
 
 ## 关系数据库优缺点
 
@@ -5144,6 +5581,12 @@ https://www.cnblogs.com/micrari/p/7112781.html
 innodb是用聚集索引，所以非聚集索引最后怎么定位到数据就需要靠主键
 
 myisam是非聚集索引，不需要主键定位数据
+
+## ER图的画法
+
+https://blog.csdn.net/sunzhenhua0608/article/details/8822871
+
+![image-20201125212759894](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201125212759894.png)
 
 # Spring
 
@@ -6390,7 +6833,120 @@ public class BitMap {
 }
 ```
 
+## 公式字符串求值
 
+```
+    public static int calculate(String s) {
+        return calculate(s, 0)[0];
+    }
+
+    // 带括号四则运算 计算从k位置开始的表达式，遇到')'或表达式完停止
+    public static int[] calculate(String s, int k) {
+        int res = 0;
+        int num = 0;
+        char sign = '+';
+        Stack<Integer> stack = new Stack<>();
+        char[] sarr = s.toCharArray();
+        int i = k;
+        for (; i < sarr.length && sarr[i] != ')'; i++) {
+            if (sarr[i] >= '0') {
+                num = num * 10 + sarr[i] - '0';
+            }
+            // 当前遇到非数字字符 | 到达公式结尾 | 下一个是')'都需要进行累计
+            if ((!Character.isDigit(sarr[i]) && sarr[i] != ' ') || i == sarr.length - 1 || sarr[i + 1] == ')') {
+                // 遇到左括号时，开始递归过程
+                if (sarr[i] == '(') {
+                    int[] arr = calculate(s, i + 1);
+                    num = arr[0];
+                    i = arr[1];
+                }
+                if (sign == '+' || sign == '-') {
+                    stack.push(sign == '+' ? num : -num);
+                } else if (sign == '*' || sign == '/') {
+                    int top = stack.pop();
+                    stack.push(sign == '*' ? top * num : top / num);
+                }
+
+                sign = sarr[i];
+                num = 0;
+            }
+        }
+
+        while (!stack.isEmpty()) {
+            res += stack.pop();
+        }
+        return new int[] { res, i };
+    }
+```
+
+
+
+## 算法
+
+```
+public class ReservoirSamplingTest {
+
+    private int[] pool; // 所有数据
+    private final int N = 100000; // 数据规模
+    private Random random = new Random();
+
+    @Before
+    public void setUp() throws Exception {
+        // 初始化
+        pool = new int[N];
+        for (int i = 0; i < N; i++) {
+            pool[i] = i;
+        }
+    }
+
+    private int[] sampling(int K) {
+        int[] result = new int[K];
+        for (int i = 0; i < K; i++) { // 前 K 个元素直接放入数组中
+            result[i] = pool[i];
+        }
+
+        for (int i = K; i < N; i++) { // K + 1 个元素开始进行概率采样
+            int r = random.nextInt(i + 1);
+            if (r < K) {
+                result[r] = pool[i];
+            }
+        }
+
+        return result;
+    }
+
+    @Test
+    public void test() throws Exception {
+        for (int i : sampling(100)) {
+            System.out.println(i);
+        }
+    }
+}
+```
+
+## 证明过程
+
+对于第 ii 个数（i≤ki≤k）。在 kk 步之前，被选中的概率为 11。当走到第 k+1k+1 步时，被 k+1k+1 个元素替换的概率 = k+1k+1 个元素被选中的概率 * ii 被选中替换的概率，即为 kk+1×1k=1k+1kk+1×1k=1k+1。则被保留的概率为 1−1k+1=kk+11−1k+1=kk+1。依次类推，不被 k+2k+2 个元素替换的概率为 1−kk+2×1k=k+1k+21−kk+2×1k=k+1k+2。则运行到第 nn 步时，被保留的概率 = 被选中的概率 * 不被替换的概率，即：
+
+
+
+
+
+1×kk+1×k+1k+2×k+2k+3×…×n−1n=kn1×kk+1×k+1k+2×k+2k+3×…×n−1n=kn
+
+
+
+对于第 jj 个数（j>kj>k）。在第 jj 步被选中的概率为 kjkj。不被 j+1j+1 个元素替换的概率为 1−kj+1×1k=jj+11−kj+1×1k=jj+1。则运行到第 nn 步时，被保留的概率 = 被选中的概率 * 不被替换的概率，即：
+
+
+
+
+
+kj×jj+1×j+1j+2×j+2j+3×...×n−1n=knkj×jj+1×j+1j+2×j+2j+3×...×n−1n=kn
+
+
+
+所以对于其中每个元素，被保留的概率都为 knkn.
 
 # 分布式
 
@@ -6855,6 +7411,10 @@ https://juejin.im/post/6844903696275341319#heading-11
 
 https://juejin.im/post/6844904094918770701
 
+## UML 各种图总结精华
+
+https://zhuanlan.zhihu.com/p/44518805
+
 # 智力题
 
 https://cloud.tencent.com/developer/article/1151534
@@ -6886,6 +7446,27 @@ https://www.bilibili.com/video/BV1KE41137PK?from=search&seid=5506978171692492747
 ## 赛马问题
 
 https://zhuanlan.zhihu.com/p/103572219
+
+- **step3：需1场or2场比赛**
+
+- - 当前剩余待定9匹赛马：A2>A3>A4,B1>B2>B3,C1>C2,D1
+
+  - 因为可以确定B1>C1>D1，因此挑选：A2>A3>A4,B1>B2>B3,C1>C2（ 或者 A2>A3>A4,B1>B2>B3,C1>D1）等8匹马进行一场比赛，剩余一匹赛马D1或者C2待定，重点关注C1名次
+
+  - **仅需1场比赛情形**
+
+  - - 当C1排名第3及以后，则选出本场前3名赛马，外加大佬A1，即为所求的Top4匹马
+
+  - **需2场比赛情形**
+
+  - - 因为已知B1>C1,所以C1本场名次区间为[2,8]
+
+    - 当C1排名第2时，可推知B1排名本场第一，因此A1>B1>C1即为全场Top3匹马，此时可剔除B1,C1两匹马，剩余9-2=7匹马待定（如下）
+
+    - - 本轮上场剩余6匹：A2>A3>A4，B2>B3,C2
+      - 未上场1匹：D1
+
+    - 将本场剩余7匹赛马再进行一场比赛，一决高低，记录名次，选出本场排名第一的赛马，加上A1>B1>C1，即为全场Top4匹马。
 
 ## 1000个苹果分十箱
 
@@ -6937,7 +7518,13 @@ while res > 21:
 return res % 7 + 1
 ```
 
+## 绑鞋带
 
+由A地到B地,中间有一段扶梯,总路程和扶梯长度是固定的,为赶时间全程都在行走(包含扶梯上),中途发现鞋带松了,需要停下来绑鞋带.请问在扶梯上绑鞋带和在路上绑鞋带两种方式比较()
+
+假设两人在到扶梯之前都在走，而到达扶梯时，甲选择在扶梯前系鞋带，而乙在上扶梯后立即系鞋带，当两人都系完携带后，此时两人都在扶梯上，运动速度一致，显然此时乙在甲的前面，并甲已经不可能再追上乙。故扶梯上绑鞋带,全程用时短
+
+https://xbeta.info/puzzle-terrence-tao.htm
 
 # 情景题
 
@@ -6965,6 +7552,10 @@ http://blog.luoyuanhang.com/2020/05/24/system-design-0/
 ## 二维码扫描登录原理
 
 https://juejin.im/post/5e83e716e51d4546c27bb559#comment
+
+![基于token的认证机制](https://gitee.com/xurunxuan/picgo/raw/master/img/171333eac13f82a0)
+
+![扫码登录全流程](https://gitee.com/xurunxuan/picgo/raw/master/img/171333eac05db6cb)
 
 ## 设计一个第三方账号登陆
 
@@ -7137,6 +7728,21 @@ https://blog.csdn.net/duola8789/article/details/91447479
 
 https://zhuanlan.zhihu.com/p/75397875
 
+链接：https://www.nowcoder.com/questionTerminal/359d6869d5ce4738bf9c9a42b67d9568
+来源：牛客网
+
+
+
+假设100亿个数字保存在一个大文件中，依次读一部分文件到内存(不超过内存的限制)，将每个数字用二进制表示，比较二进制的最高位(第32位，符号位，0是正，1是负)，如果数字的最高位为0，则将这个数字写入 file_0文件中；如果最高位为 1，则将该数字写入file_1文件中。 
+
+  从而将100亿个数字分成了两个文件，假设 file_0文件中有 60亿 个数字，file_1文件中有 40亿 个数字。那么中位数就在 file_0 文件中，并且是 file_0 文件中所有数字排序之后的第 10亿 个数字。（file_1中的数都是负数，file_0中的数都是正数，也即这里一共只有40亿个负数，那么排序之后的第50亿个数一定位于file_0中） 
+
+  现在，我们只需要处理 file_0 文件了（不需要再考虑file_1文件）。对于 file_0 文件，同样采取上面的措施处理：将file_0文件依次读一部分到内存(不超内存限制)，将每个数字用二进制表示，比较二进制的 次高位（第31位），如果数字的次高位为0，写入file_0_0文件中；如果次高位为1，写入file_0_1文件 中。 
+
+  现假设 file_0_0文件中有30亿个数字，file_0_1中也有30亿个数字，则中位数就是：file_0_0文件中的数字从小到大排序之后的第10亿个数字。 
+
+  抛弃file_0_1文件，继续对 file_0_0文件 根据 次次高位(第30位) 划分，假设此次划分的两个文件为：file_0_0_0中有5亿个数字，file_0_0_1中有25亿个数字，那么中位数就是 file_0_0_1文件中的所有数字排序之后的 第 5亿 个数。	
+
 ## CPU打到100%p排查
 
 https://mp.weixin.qq.com/s/roEMz-5tzBZvGxbjq8NhOQ
@@ -7266,11 +7872,55 @@ https://www.lagou.com/lgeduarticle/78019.html
 - 问题思路排查要有理有据，一步一步来，不能瞎子抓阄似的。
 - 服务挂掉，首先要恢复服务，比如重启等操作
 
+## 判断进程是由于死循环造成的100%cpu占用还是由于进行着一个及其耗资源的计算造成的100%cpu占用
+
+https://www.cnblogs.com/yjf512/p/3383915.html
+
+us：用户态使用的cpu时间比
+sy：系统态使用的cpu时间比
+
+usr%飚高 是死循环。sys%飙高是系统资源
+
+他们怎么计算的
+
+cpu消耗在kernel space的时候就是sy（系统态使用的cpu百分比），cpu消耗在user space的时候就是us（用户态使用的cpu百分比）。
+
+答案二
+
+首先还是得对线程进行dump，找到一直在运行的线程是什么，然后可以找到对应的代码。然后我们写程序的时候是知道我们的代码里面是否有CPU密集型的任务，比如压缩类操作。一般正常程序里面其实很少有长时间占着CPU执行的代码逻辑。对于这种情况导致的CPU满载我们一般就可以判断是程序问题了。
+
+## 秒杀系统设计
+
+秒杀链接加盐
+
+把**URL动态化**，就连写代码的人都不知道，你就通过MD5之类的加密算法加密随机的字符串去做url，然后通过前端代码获取url后台校验才能通过。
+
+Nginx：
+
+Redis集群
+
+**限流：** 鉴于只有少部分用户能够秒杀成功，所以要限制大部分流量，只允许少部分流量进入服务后端。
+
+**削峰：**对于秒杀系统瞬时会有大量用户涌入，所以在抢购一开始会有很高的瞬间峰值。高峰值流量是压垮系统很重要的原因，所以如何把瞬间的高流量变成一段时间平稳的流量也是设计秒杀系统很重要的思路。实现削峰的常用的方法有利用缓存和消息中间件等技术。
+
+**异步处理：**秒杀系统是一个高并发系统，采用异步处理模式可以极大地提高系统并发量，其实异步处理就是削峰的一种实现方式。
+
+**内存缓存：**秒杀系统最大的瓶颈一般都是数据库读写，由于数据库读写属于磁盘IO，性能很低，如果能够把部分数据或业务逻辑转移到内存缓存，效率会有极大地提升。
+
+**可拓展：**当然如果我们想支持更多用户，更大的并发，最好就将系统设计成弹性可拓展的，如果流量来了，拓展机器就好了。像淘宝、京东等双十一活动时会增加大量机器应对交易高峰。
 
 
 
+作者：一行代码一首诗
+链接：https://www.jianshu.com/p/ed76fbfa9440
+来源：简书
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 
+## IM系统设计
 
+https://cloud.tencent.com/developer/article/1394627
+
+https://xie.infoq.cn/article/19e95a78e2f5389588debfb1c
 
 
 
@@ -7350,6 +8000,17 @@ mapper文件中要定位到sql,需要两个条件,一个是namespace,一个是sq
 # 
 
 # Kafka
+
+：**解耦**、**异步**、**削峰**
+
+| 特性                     | ActiveMQ                              | RabbitMQ                                           | RocketMQ                                                     | Kafka                                                        |
+| ------------------------ | ------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 单机吞吐量               | 万级，比 RocketMQ、Kafka 低一个数量级 | 同 ActiveMQ                                        | 10 万级，支撑高吞吐                                          | 10 万级，高吞吐，一般配合大数据类的系统来进行实时数据计算、日志采集等场景 |
+| topic 数量对吞吐量的影响 |                                       |                                                    | topic 可以达到几百/几千的级别，吞吐量会有较小幅度的下降，这是 RocketMQ 的一大优势，在同等机器下，可以支撑大量的 topic | topic 从几十到几百个时候，吞吐量会大幅度下降，在同等机器下，Kafka 尽量保证 topic 数量不要过多，如果要支撑大规模的 topic，需要增加更多的机器资源 |
+| 时效性                   | ms 级                                 | 微秒级，这是 RabbitMQ 的一大特点，延迟最低         | ms 级                                                        | 延迟在 ms 级以内                                             |
+| 可用性                   | 高，基于主从架构实现高可用            | 同 ActiveMQ                                        | 非常高，分布式架构                                           | 非常高，分布式，一个数据多个副本，少数机器宕机，不会丢失数据，不会导致不可用 |
+| 消息可靠性               | 有较低的概率丢失数据                  | 基本不丢                                           | 经过参数优化配置，可以做到 0 丢失                            | 同 RocketMQ                                                  |
+| 功能支持                 | MQ 领域的功能极其完备                 | 基于 erlang 开发，并发能力很强，性能极好，延时很低 | MQ 功能较为完善，还是分布式的，扩展性好                      | 功能较为简单，主要支持简单的 MQ 功能，在大数据领域的实时计算以及日志采集被大规模使用 |
 
 ## 生产者发送消息的过程
 
@@ -7464,6 +8125,78 @@ max.in.flight.requests.per.connection = 1 限制客户端在单个连接上能�
  follower 是正常的，所以下一次 fetch 请求就会又追上 leader， 这时候就会再次加入 ISR 集合，如果经常性的抖动，就会不断的移入移出ISR集合，会造成令人头疼的 告警轰炸。
 
 对 replica.lag.time.max.ms **这个配置的含义做了增强，和之前一样，如果 follower 卡住超过这个时间不发送fetch请求， 会被踢出ISR集合，新的增强逻辑是，在 follower 落后 leader 超过** eplica.lag.max.messages **条消息的时候，不会立马踢出ISR 集合，而是持续落后超过** replica.lag.time.max.ms **时间，才会被踢出**，这样就能避免流量抖动造成的运维问题，因为follower 在下一次fetch的时候就会跟上leader， 这样就也不用对 topic 的写入速度做任何的估计喽。
+
+## 文件储存
+
+## partiton中segment文件存储结构
+
+读者从2.2节了解到Kafka文件系统partition存储方式，本节深入分析partion中segment file组成和物理结构。
+
+- segment file组成：由2大部分组成，分别为index file和data file，此2个文件一一对应，成对出现，后缀”.index”和“.log”分别表示为segment索引文件、数据文件.
+- segment文件命名规则：partion全局的第一个segment从0开始，后续每个segment文件名为上一个segment文件最后一条消息的offset值。数值最大为64位long大小，19位数字字符长度，没有数字用0填充。
+
+下面文件列表是笔者在Kafka broker上做的一个实验，创建一个topicXXX包含1 partition，设置每个segment大小为500MB,并启动producer向Kafka broker写入大量数据,如下图2所示segment文件列表形象说明了上述2个规则：![image](https://gitee.com/xurunxuan/picgo/raw/master/img/69e4b0a6.png)
+
+
+
+
+
+以上述图2中一对segment file文件为例，说明segment中index<—->data file对应关系物理结构如下：![image](https://awps-assets.meituan.net/mit-x/blog-images-bundle-2015/c415ed42.png)
+
+上述图3中索引文件存储大量元数据，数据文件存储大量消息，索引文件中元数据指向对应数据文件中message的物理偏移地址。 其中以索引文件中元数据3,497为例，依次在数据文件中表示第3个message(在全局partiton表示第368772个message)、以及该消息的物理偏移地址为497。
+
+从上述图3了解到segment data file由许多message组成，下面详细说明message物理结构如下：![](https://gitee.com/xurunxuan/picgo/raw/master/img/69e4b0a6![image](https://awps-assets.meituan.net/mit-x/blog-images-bundle-2015/355c1d57.png)
+
+### 参数说明：
+
+| 关键字              | 解释说明                                                     |
+| :------------------ | :----------------------------------------------------------- |
+| 8 byte offset       | 在parition(分区)内的每条消息都有一个有序的id号，这个id号被称为偏移(offset),它可以唯一确定每条消息在parition(分区)内的位置。即offset表示partiion的第多少message |
+| 4 byte message size | message大小                                                  |
+| 4 byte CRC32        | 用crc32校验message                                           |
+| 1 byte “magic”      | 表示本次发布Kafka服务程序协议版本号                          |
+| 1 byte “attributes” | 表示为独立版本、或标识压缩类型、或编码类型。                 |
+| 4 byte key length   | 表示key的长度,当key为-1时，K byte key字段不填                |
+| K byte key          | 可选                                                         |
+| value bytes payload | 表示实际消息数据。                                           |
+
+### 在partition中如何通过offset查找message
+
+例如读取offset=368776的message，需要通过下面2个步骤查找。
+
+- 第一步查找segment file 上述图2为例，其中00000000000000000000.index表示最开始的文件，起始偏移量(offset)为0.第二个文件00000000000000368769.index的消息量起始偏移量为368770 = 368769 + 1.同样，第三个文件00000000000000737337.index的起始偏移量为737338=737337 + 1，其他后续文件依次类推，以起始偏移量命名并排序这些文件，只要根据offset **二分查找**文件列表，就可以快速定位到具体文件。 当offset=368776时定位到00000000000000368769.index|log
+- 第二步通过segment file查找message 通过第一步定位到segment file，当offset=368776时，依次定位到00000000000000368769.index的元数据物理位置和00000000000000368769.log的物理偏移地址，然后再通过00000000000000368769.log顺序查找直到offset=368776为止。
+
+从上述图3可知这样做的优点，segment index file采取稀疏索引存储方式，它减少索引文件大小，通过mmap可以直接内存操作，稀疏索引为数据文件的每个对应message设置一个元数据指针,它比稠密索引节省了更多的存储空间，但查找起来需要消耗更多的时间。
+
+## 保证消息的可靠性传输
+
+消费端
+
+Kafka 会自动提交 offset，那么只要**关闭自动提交** offset，在处理完之后自己手动提交 offset，就可以保证数据不会丢。但是此时确实还是**可能会有重复消费**，比如你刚处理完，还没提交 offset，结果自己挂了，此时肯定会重复消费一次，自己保证幂等性就好了。
+
+kafka
+
+- 给 topic 设置 `replication.factor` 参数：这个值必须大于 1，要求每个 partition 必须有至少 2 个副本。
+- 在 Kafka 服务端设置 `min.insync.replicas` 参数：这个值必须大于 1，这个是要求一个 leader 至少感知到有至少一个 follower 还跟自己保持联系，没掉队，这样才能确保 leader 挂了还有一个 follower 吧。
+- 在 producer 端设置 `acks=all` ：这个是要求每条数据，必须是**写入所有 replica 之后，才能认为是写成功了**。
+- 在 producer 端设置 `retries=MAX` （很大很大很大的一个值，无限次重试的意思）：这个是**要求一旦写入失败，就无限重试**，卡在这里了。
+
+问题 不完全选举
+
+![image-20201122161835889](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201122161835889.png)
+
+怎么办
+
+![image-20201122162021592](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201122162021592.png)
+
+![image-20201122162055995](https://gitee.com/xurunxuan/picgo/raw/master/img/image-20201122162055995.png)
+
+生产者
+
+- 在 producer 端设置 `acks=all` ：这个是要求每条数据，必须是**写入所有 replica 之后，才能认为是写成功了**。
+
+
 
 # Dubbo
 
@@ -7597,6 +8330,22 @@ https://mp.weixin.qq.com/s/xkwwAUV9ziabPNUMEr5DPQ
 ![img](https://mmbiz.qpic.cn/mmbiz_jpg/ibBMVuDfkZUnmqYcY60pNmbWxW01EYSbeqIx4aoPVoQ0mEn0ZWnicgI01U55t6PMj4Q3TakKYHB1jJHg1OhAzEKg/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)图片来自dubbo官方
 
 1. 加权轮询：比如服务器 A、B、C 权重比为 5:2:1，那么在8次请求中，服务器 A 将收到其中的5次请求，服务器 B 会收到其中的2次请求，服务器 C 则收到其中的1次请求。
+
+平滑处理
+
+http://dubbo.apache.org/zh/docs/v2.7/dev/source/loadbalance/
+
+| 请求编号 | currentWeight 数组 | 选择结果 | 减去权重总和后的 currentWeight 数组 |
+| -------- | ------------------ | -------- | ----------------------------------- |
+| 1        | [5, 1, 1]          | A        | [-2, 1, 1]                          |
+| 2        | [3, 2, 2]          | A        | [-4, 2, 2]                          |
+| 3        | [1, 3, 3]          | B        | [1, -4, 3]                          |
+| 4        | [6, -3, 4]         | A        | [-1, -3, 4]                         |
+| 5        | [4, -2, 5]         | C        | [4, -2, -2]                         |
+| 6        | [9, -1, -1]        | A        | [2, -1, -1]                         |
+| 7        | [7, 0, 0]          | A        | [0, 0, 0]                           |
+
+如上，经过平滑性处理后，得到的服务器序列为 [A, A, B, A, C, A, A]，相比之前的序列 [A, A, A, A, A, B, C]，分布性要好一些。初始情况下 currentWeight = [0, 0, 0]，第7个请求处理完后，currentWeight 再次变为 [0, 0, 0]。
 
 ## 集群容错方式有哪些？
 
